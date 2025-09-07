@@ -1,0 +1,12 @@
+services:
+  simple-service:
+    tag: 1.0.0
+    environmentVariables:
+      - ENV_VAR1=value1
+      - ENV_VAR2=value2
+
+  another-service:
+      tag: 2.1.0
+      environmentVariables:
+        - ENV_VAR_A=valueA
+        - ENV_VAR_B=valueB

@@ -1,0 +1,32 @@
+{
+  "name": "xq-test-infra",
+  "version": "0.0.1",
+  "description": "A test infra cli used to spin up test environment",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "find . -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 node --check && npm test",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chauhaidang/xq-test-infra.git"
+  },
+  "keywords": [
+    "cli"
+  ],
+  "author": "chauhaidang",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/chauhaidang/xq-test-infra/issues"
+  },
+  "homepage": "https://github.com/chauhaidang/xq-test-infra#readme",
+  "dependencies": {
+    "@chauhaidang/xq-js-common-kit": "1.0.3"
+  },
+  "devDependencies": {
+    "jest": "^30.1.1",
+    "eslint": "^8.50.0"
+  }
+}
