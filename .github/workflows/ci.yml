@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, 001-as-a-nodejs ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linter
+      run: npm run lint
+
+    - name: Run unit tests
+      run: npm test -- --testPathIgnorePatterns=integration.test.js
+
+    - name: Run build validation
+      run: npm run build
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run integration tests
+      run: npm test -- --testNamePattern="Integration Tests"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  example-usage:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Create example XQ spec
+      run: |
+        mkdir -p examples
+        cat > examples/example.yaml << EOF
+        services:
+          web:
+            image: nginx
+            tag: alpine
+            ports:
+              - "8080:80"
+          api:
+            image: node
+            tag: 18-alpine
+            ports:
+              - "3000:3000"
+            environment:
+              NODE_ENV: production
+        EOF
+
+    - name: Generate docker-compose
+      run: ./bin/xq-infra.js generate -f examples/example.yaml -o examples/docker-compose.yml
+
+    - name: Validate generated compose file
+      run: |
+        test -f examples/docker-compose.yml
+        docker compose -f examples/docker-compose.yml config
+
+    - name: Test CLI with --help
+      run: ./bin/xq-infra.js --help
+
+    - name: Test CLI version
+      run: ./bin/xq-infra.js --version
