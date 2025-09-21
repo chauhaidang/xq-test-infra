@@ -26,6 +26,8 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run linter
       run: npm run lint
@@ -52,6 +54,8 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
+      env:
+        GIT
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
