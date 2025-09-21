@@ -230,9 +230,9 @@ services:
             await composeInvoker.up(testComposePath)
 
             expect(spawn).toHaveBeenCalledWith('docker',
-                ['compose', '-f', testComposePath, 'up'],
+                ['compose', '-f', testComposePath, 'up', '-d', '--remove-orphans'],
                 expect.objectContaining({
-                    stdio: 'inherit',
+                    stdio: 'pipe',
                     cwd: process.cwd()
                 })
             )

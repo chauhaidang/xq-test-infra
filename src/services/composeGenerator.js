@@ -22,7 +22,7 @@ class ComposeGenerator {
         }
     }
 
-    async generateCompose(specPath, outputPath, options = {}) {
+    async generateCompose(specPath, options = {}) {
         const {
             gateway: enableGateway = true,
             keepFile = false,
@@ -36,16 +36,16 @@ class ComposeGenerator {
         const mergedSpec = this.applyOverrides(spec, overrides)
 
         // Generate compose object
-        const compose = await this.generateComposeObject(mergedSpec, enableGateway)
+        const compose = await this.generateComposeObject(mergedSpec, enableGateway, keepFile)
 
-        // Determine output path
-        const finalOutputPath = outputPath || this.createTempPath('docker-compose', '.yml')
+        // Always output to xq-compose.yml in current directory
+        const finalOutputPath = path.join(process.cwd(), 'xq-compose.yml')
 
         // Write compose file
         await fs.outputFile(finalOutputPath, YAML.stringify(compose), 'utf8')
 
-        // Track temp file for cleanup
-        if (!keepFile && !outputPath) {
+        // Track temp file for cleanup only if not keeping files
+        if (!keepFile) {
             this.tempFiles.add(finalOutputPath)
         }
 
@@ -76,7 +76,7 @@ class ComposeGenerator {
         return merged
     }
 
-    async generateComposeObject(spec, enableGateway) {
+    async generateComposeObject(spec, enableGateway, keepFile = false) {
         const compose = {
             version: '3.8',
             services: {},
@@ -96,7 +96,7 @@ class ComposeGenerator {
 
         // Add gateway if enabled
         if (enableGateway && Object.keys(compose.services).length > 0) {
-            await this.addGateway(compose)
+            await this.addGateway(compose, keepFile)
         }
 
         return compose
@@ -132,16 +132,37 @@ class ComposeGenerator {
         return composeService
     }
 
-    async addGateway(compose) {
-        // Generate nginx config
-        const nginxConfigPath = this.createTempPath('nginx', '.conf')
+    async addGateway(compose, keepFile = false) {
+        // Generate nginx config in project directory
+        const nginxConfigPath = path.join(process.cwd(), 'nginx-gateway.conf')
         await gateway.generateNginxConfig(compose.services, nginxConfigPath)
-        this.tempFiles.add(nginxConfigPath)
+
+        // Add to temp files for cleanup only if not keeping files
+        if (!keepFile) {
+            this.tempFiles.add(nginxConfigPath)
+        }
+
+        // Find an available port for gateway (avoid conflicts)
+        const usedPorts = new Set()
+        Object.values(compose.services).forEach(service => {
+            if (service.ports) {
+                service.ports.forEach(port => {
+                    const hostPort = port.split(':')[0]
+                    usedPorts.add(parseInt(hostPort))
+                })
+            }
+        })
+
+        // Find next available port starting from 8080
+        let gatewayPort = 8080
+        while (usedPorts.has(gatewayPort)) {
+            gatewayPort++
+        }
 
         // Add gateway service
         compose.services['xq-gateway'] = {
             image: 'nginx:alpine',
-            ports: ['8080:80'],
+            ports: [`${gatewayPort}:80`],
             volumes: [`${nginxConfigPath}:/etc/nginx/nginx.conf:ro`],
             networks: ['xq-network'],
             depends_on: Object.keys(compose.services)

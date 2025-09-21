@@ -44,6 +44,7 @@ describe('ComposeGenerator', () => {
         test('should generate valid docker-compose from XQ spec', async () => {
             const composePath = await composeGenerator.generateCompose(testSpecPath)
 
+            expect(composePath).toBe(path.join(process.cwd(), 'xq-compose.yml'))
             expect(await fs.pathExists(composePath)).toBe(true)
 
             const composeContent = await fs.readFile(composePath, 'utf8')

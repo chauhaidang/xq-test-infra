@@ -1,17 +1,19 @@
 # XQ Test Infrastructure CLI - Usage Guide
 
-This guide provides comprehensive instructions for using the xq-infra CLI tool to manage Docker-based test environments.
+This guide provides comprehensive instructions for using the xq-infra CLI tool to manage Docker-based test environments with simplified commands and on-demand log viewing.
 
 ## Table of Contents
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [XQ Specification Format](#xq-specification-format)
 - [CLI Commands](#cli-commands)
+- [On-Demand Log Viewing](#on-demand-log-viewing)
 - [Service Overrides](#service-overrides)
 - [Gateway Configuration](#gateway-configuration)
 - [Registry Authentication](#registry-authentication)
 - [GitHub Actions Integration](#github-actions-integration)
 - [Examples](#examples)
+- [Migration Guide](#migration-guide)
 - [Troubleshooting](#troubleshooting)
 
 ## Installation
@@ -61,23 +63,28 @@ services:
 
 2. **Generate and start your environment**:
 ```bash
-# Generate docker-compose file
-./bin/xq-infra.js generate -f my-services.yaml -o docker-compose.yml
+# Generate compose file (creates xq-compose.yml)
+./bin/xq-infra.js generate -f my-services.yaml
 
-# Start services
-./bin/xq-infra.js up -f docker-compose.yml -d
+# Start services (detached mode)
+./bin/xq-infra.js up
 
 # Check status
-docker compose -f docker-compose.yml ps
+docker ps
+
+# View logs when needed
+./bin/xq-infra.js logs
+./bin/xq-infra.js logs -f  # Follow in real-time
 
 # Stop and clean up
-./bin/xq-infra.js down -f docker-compose.yml
+./bin/xq-infra.js down
 ```
 
 3. **Access your services**:
 - Web app: http://localhost:8080/web-app/
 - Database: localhost:5432
-- Gateway (all services): http://localhost:8080/
+- Gateway (all services): http://localhost:8081/ (auto-assigned port)
+- View logs: `./bin/xq-infra.js logs`
 
 ## XQ Specification Format
 
@@ -141,14 +148,13 @@ services:
 ## CLI Commands
 
 ### Generate Command
-Generate a docker-compose file from an XQ specification.
+Generate `xq-compose.yml` from an XQ specification.
 
 ```bash
 xq-infra generate [options]
 
 Options:
   -f, --file <path>         Path to XQ YAML spec (required)
-  -o, --out <path>          Output path for generated docker-compose file
   --no-gateway              Disable default gateway injection
   --keep-file               Keep generated compose file after run
   --overrides <path>        Path to JSON file with overrides
@@ -156,11 +162,8 @@ Options:
 
 **Examples:**
 ```bash
-# Basic generation
+# Basic generation (creates xq-compose.yml)
 xq-infra generate -f services.yaml
-
-# Custom output location
-xq-infra generate -f services.yaml -o my-compose.yml
 
 # Without gateway
 xq-infra generate -f services.yaml --no-gateway
@@ -170,43 +173,148 @@ xq-infra generate -f services.yaml --overrides overrides.json
 ```
 
 ### Up Command
-Start services from a docker-compose file.
+Start services from `xq-compose.yml` in detached mode.
 
 ```bash
 xq-infra up [options]
 
 Options:
-  -f, --file <path>         Path to docker-compose.yaml to run (required)
-  -d, --detached            Run in detached mode
   --pull                    Pull images before starting
 ```
 
 **Examples:**
 ```bash
-# Start in foreground (shows logs)
-xq-infra up -f docker-compose.yml
-
-# Start in background
-xq-infra up -f docker-compose.yml -d
+# Start services (detached mode)
+xq-infra up
 
 # Pull latest images first
-xq-infra up -f docker-compose.yml -d --pull
+xq-infra up --pull
 ```
 
 ### Down Command
-Stop and remove services started by the compose file.
+Stop and remove services from `xq-compose.yml`.
 
 ```bash
-xq-infra down [options]
-
-Options:
-  -f, --file <path>         Path to docker-compose.yaml used to run (required)
+xq-infra down
 ```
 
 **Example:**
 ```bash
-xq-infra down -f docker-compose.yml
+# Stop all services
+xq-infra down
 ```
+
+### Logs Command
+View logs from services in `xq-compose.yml`.
+
+```bash
+xq-infra logs [service] [options]
+
+Options:
+  -f, --follow              Follow log output in real-time
+  -t, --tail <lines>        Number of lines to show (default: 100)
+  --timestamps              Show timestamps
+  [service]                 Optional: specific service name
+```
+
+**Examples:**
+```bash
+# View last 100 lines of all service logs
+xq-infra logs
+
+# Follow logs in real-time (similar to tail -f)
+xq-infra logs -f
+
+# View logs for specific service
+xq-infra logs frontend
+
+# View last 50 lines with timestamps
+xq-infra logs --tail 50 --timestamps
+
+# Follow specific service logs
+xq-infra logs backend -f
+```
+
+## On-Demand Log Viewing
+
+The CLI provides flexible log viewing capabilities through the `logs` command, using Docker Compose's native logging functionality.
+
+### Features
+- **On-demand viewing**: Logs are shown only when requested
+- **Service-specific logs**: View logs from individual services or all services
+- **Real-time following**: Use `-f` flag for live log streaming
+- **Customizable output**: Control number of lines and timestamp display
+- **No background processes**: Commands return immediately, no CLI hanging
+
+### Log Viewing Options
+
+#### View All Service Logs
+```bash
+# Last 100 lines from all services (default)
+xq-infra logs
+
+# Last 50 lines from all services
+xq-infra logs --tail 50
+
+# All logs with timestamps
+xq-infra logs --timestamps
+```
+
+#### Follow Logs in Real-Time
+```bash
+# Follow all service logs (like tail -f)
+xq-infra logs -f
+
+# Follow with timestamps
+xq-infra logs -f --timestamps
+
+# Follow last 20 lines then continue
+xq-infra logs -f --tail 20
+```
+
+#### Service-Specific Logs
+```bash
+# View logs for specific service
+xq-infra logs frontend
+xq-infra logs backend
+xq-infra logs database
+
+# Follow specific service logs
+xq-infra logs frontend -f
+
+# Last 25 lines from specific service
+xq-infra logs backend --tail 25
+```
+
+### Combining with Standard Tools
+```bash
+# Search for errors in logs
+xq-infra logs | grep -i error
+
+# Search specific service logs
+xq-infra logs backend | grep "database connection"
+
+# Save logs to file
+xq-infra logs --timestamps > service-logs.txt
+
+# Monitor logs with less
+xq-infra logs -f | less
+```
+
+### Log Output Format
+The logs command uses Docker Compose's standard log format:
+```
+frontend-1  | 192.168.1.1 - - [21/Sep/2025:15:30:01 +0000] "GET / HTTP/1.1" 200 612
+backend-1   | [2025-09-21 15:30:01] INFO: Server started on port 3000
+database-1  | 2025-09-21 15:30:01.123 UTC [1] LOG:  database system is ready
+```
+
+### Benefits of On-Demand Approach
+- **No CLI hanging**: Commands return immediately after starting services
+- **User controlled**: View logs only when needed
+- **Familiar interface**: Similar to standard Docker commands
+- **Reliable**: Uses native Docker Compose logging without background processes
+- **Flexible**: Full control over log viewing options
 
 ## Service Overrides
 
@@ -350,18 +458,23 @@ jobs:
 
     - name: Start test environment
       run: |
-        ./bin/xq-infra.js generate -f test-spec.yaml -o test-compose.yml
-        ./bin/xq-infra.js up -f test-compose.yml -d
+        ./bin/xq-infra.js generate -f test-spec.yaml
+        ./bin/xq-infra.js up
 
     - name: Run tests
       run: |
         # Your test commands here
         npm test
 
+        # View logs if tests fail
+        if [ $? -ne 0 ]; then
+          ./bin/xq-infra.js logs
+        fi
+
     - name: Cleanup
       if: always()
       run: |
-        ./bin/xq-infra.js down -f test-compose.yml
+        ./bin/xq-infra.js down
 ```
 
 ### Private Registry Access
@@ -385,8 +498,7 @@ jobs:
       run: |
         ./bin/xq-infra.js generate \\
           -f base-spec.yaml \\
-          --overrides environments/${{ matrix.environment }}.json \\
-          -o ${{ matrix.environment }}-compose.yml
+          --overrides environments/${{ matrix.environment }}.json
 ```
 
 ## Examples
@@ -429,12 +541,16 @@ services:
 
 ```bash
 # Start the environment
-xq-infra generate -f web-app.yaml -o app-compose.yml
-xq-infra up -f app-compose.yml -d
+xq-infra generate -f web-app.yaml
+xq-infra up
 
 # Access services
 curl http://localhost:8080/frontend/
-curl http://localhost:8080/backend/health
+curl http://localhost:8081/backend/health  # Gateway on auto-assigned port
+
+# View logs
+xq-infra logs
+xq-infra logs -f  # Follow in real-time
 ```
 
 ### Example 2: Microservices with Message Queue
@@ -515,9 +631,62 @@ Development overrides (`dev-overrides.json`):
 
 ```bash
 # Generate development environment
-xq-infra generate -f base.yaml --overrides dev-overrides.json -o dev-compose.yml
-xq-infra up -f dev-compose.yml -d
+xq-infra generate -f base.yaml --overrides dev-overrides.json
+xq-infra up
 ```
+
+## Migration Guide
+
+### Upgrading from Previous Versions
+
+If you were using an earlier version of xq-infra, here's how to migrate to the new simplified interface:
+
+#### **Command Changes**
+
+**Old workflow:**
+```bash
+# Version 0.0.1 and earlier
+xq-infra generate -f services.yaml -o my-compose.yml
+xq-infra up -f my-compose.yml -d
+docker compose -f my-compose.yml logs  # Manual Docker command
+xq-infra down -f my-compose.yml
+```
+
+**New workflow:**
+```bash
+# Version 0.0.2 and later
+xq-infra generate -f services.yaml      # Creates xq-compose.yml
+xq-infra up                             # Detached mode (returns immediately)
+xq-infra logs                           # View logs when needed
+xq-infra logs -f                        # Follow logs in real-time
+xq-infra down                           # Stops everything
+```
+
+#### **File Changes**
+
+| Old | New | Notes |
+|-----|-----|-------|
+| Custom output path (`-o`) | `xq-compose.yml` | Fixed filename in current directory |
+| Manual `docker compose logs` | `xq-infra logs` | Integrated logs command |
+| `-f` file arguments | Implicit usage | Commands auto-use `xq-compose.yml` |
+| `-d` detached flag | Always detached | Detached mode is now default |
+
+#### **Breaking Changes**
+- **Removed flags**: `-o/--out`, `-f/--file`, `-d/--detached`
+- **Fixed filenames**: Must use `xq-compose.yml` and `xq-infra.log`
+- **No custom output paths**: Files always created in current directory
+
+#### **Benefits of Migration**
+- **Fewer arguments**: Simpler commands with less typing
+- **Integrated logging**: Built-in logs command with flexible options
+- **Consistent workflow**: Same commands work across all environments
+- **Better debugging**: On-demand log viewing with service-specific options
+
+#### **Compatibility**
+- **XQ spec format**: No changes required to your YAML specifications
+- **Service configurations**: All existing service definitions work unchanged
+- **Gateway functionality**: Same nginx gateway behavior
+- **Override files**: JSON override format remains the same
 
 ## Troubleshooting
 
@@ -561,10 +730,10 @@ docker login <registry-url>
 #### 5. Service Not Starting
 ```bash
 # Check service logs
-docker compose -f docker-compose.yml logs <service-name>
+xq-infra logs <service-name>
 
-# Check service status
-docker compose -f docker-compose.yml ps
+# Check service status (use docker directly)
+docker compose -f xq-compose.yml ps
 ```
 
 ### Debug Mode
@@ -581,13 +750,13 @@ Validate your XQ spec:
 python -c "import yaml; yaml.safe_load(open('services.yaml'))"
 
 # Generate and validate compose file
-xq-infra generate -f services.yaml -o test-compose.yml
-docker compose -f test-compose.yml config
+xq-infra generate -f services.yaml
+docker compose -f xq-compose.yml config
 ```
 
 ### Getting Help
 - Check command help: `xq-infra <command> --help`
-- View logs: `docker compose -f <file> logs`
+- View logs: `xq-infra logs`
 - Report issues: https://github.com/chauhaidang/xq-test-infra/issues
 
 ## Advanced Configuration

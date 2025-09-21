@@ -1,12 +1,18 @@
 services:
-  simple-service:
-    tag: 1.0.0
-    environmentVariables:
-      - ENV_VAR1=value1
-      - ENV_VAR2=value2
+  web-app:
+    image: nginx
+    tag: alpine
+    ports:
+      - "8080:80"
+    environment:
+      NGINX_HOST: localhost
 
-  another-service:
-      tag: 2.1.0
-      environmentVariables:
-        - ENV_VAR_A=valueA
-        - ENV_VAR_B=valueB
+  database:
+    image: postgres
+    tag: "15"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass

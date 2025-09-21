@@ -10,15 +10,13 @@ module.exports = async function main() {
 
     program
         .command('generate')
-        .description('Generate a docker-compose.yaml from xq spec')
+        .description('Generate xq-compose.yml from xq spec')
         .requiredOption('-f, --file <path>', 'Path to xq YAML spec')
-        .option('-o, --out <path>', 'Output path for generated docker-compose file')
         .option('--no-gateway', 'Disable default gateway injection')
         .option('--keep-file', 'Keep generated compose file after run')
         .option('--overrides <path>', 'Path to JSON file with overrides')
         .action(async (opts) => {
             const absIn = path.resolve(process.cwd(), opts.file)
-            const out = opts.out ? path.resolve(process.cwd(), opts.out) : undefined
             let overrides = undefined
             if (opts.overrides) {
                 try {
@@ -29,7 +27,7 @@ module.exports = async function main() {
                 }
             }
             try {
-                const outPath = await composeGenerator.generateCompose(absIn, out, {
+                const outPath = await composeGenerator.generateCompose(absIn, {
                     gateway: opts.gateway,
                     keepFile: !!opts.keepFile,
                     overrides
@@ -43,15 +41,14 @@ module.exports = async function main() {
 
     program
         .command('up')
-        .description('Start services from a docker-compose file')
-        .requiredOption('-f, --file <path>', 'Path to docker-compose.yaml to run')
-        .option('-d, --detached', 'Run in detached mode')
+        .description('Start services from xq-compose.yml (detached mode)')
         .option('--pull', 'Pull images before starting')
         .action(async (opts) => {
-            const absFile = path.resolve(process.cwd(), opts.file)
+            const composeFile = path.join(process.cwd(), 'xq-compose.yml')
             try {
-                if (opts.pull) await composeInvoker.pull(absFile)
-                await composeInvoker.up(absFile, { detached: !!opts.detached })
+                if (opts.pull) await composeInvoker.pull(composeFile)
+                await composeInvoker.up(composeFile, { pull: !!opts.pull })
+                console.log('Services started successfully!')
             } catch (err) {
                 console.error('Failed to run up:', err.message || err)
                 process.exit(3)
@@ -60,15 +57,37 @@ module.exports = async function main() {
 
     program
         .command('down')
-        .description('Stop and remove services started by the compose file')
-        .requiredOption('-f, --file <path>', 'Path to docker-compose.yaml used to run')
-        .action(async (opts) => {
-            const absFile = path.resolve(process.cwd(), opts.file)
+        .description('Stop and remove services from xq-compose.yml')
+        .action(async () => {
+            const composeFile = path.join(process.cwd(), 'xq-compose.yml')
             try {
-                await composeInvoker.down(absFile)
+                await composeInvoker.down(composeFile)
+                console.log('Services stopped successfully!')
             } catch (err) {
                 console.error('Failed to run down:', err.message || err)
                 process.exit(4)
+            }
+        })
+
+    program
+        .command('logs')
+        .description('View logs from services in xq-compose.yml')
+        .option('-f, --follow', 'Follow log output in real-time')
+        .option('-t, --tail <lines>', 'Number of lines to show from the end of the logs', '100')
+        .option('--timestamps', 'Show timestamps')
+        .argument('[service]', 'Specific service to show logs for (optional)')
+        .action(async (service, opts) => {
+            const composeFile = path.join(process.cwd(), 'xq-compose.yml')
+            try {
+                await composeInvoker.logs(composeFile, {
+                    follow: !!opts.follow,
+                    tail: opts.tail,
+                    timestamps: !!opts.timestamps,
+                    service
+                })
+            } catch (err) {
+                console.error('Failed to get logs:', err.message || err)
+                process.exit(5)
             }
         })
 

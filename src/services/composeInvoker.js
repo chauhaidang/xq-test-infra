@@ -35,7 +35,7 @@ class ComposeInvoker {
     }
 
     async up(composeFile, options = {}) {
-        const { detached = false, pull = false } = options
+        const { detached = true, pull = false } = options
 
         await this.validateComposeFile(composeFile)
         const cli = await this.detectDockerCompose()
@@ -43,6 +43,7 @@ class ComposeInvoker {
         const args = [...cli.args, '-f', composeFile, 'up']
         if (detached) args.push('-d')
         if (pull) args.push('--pull', 'always')
+        args.push('--remove-orphans') // Always remove orphaned containers
 
         return this.execCommand(cli.command, args, {
             stdio: detached ? 'pipe' : 'inherit',
@@ -79,7 +80,7 @@ class ComposeInvoker {
     }
 
     async logs(composeFile, options = {}) {
-        const { follow = false, tail = null, service = null } = options
+        const { follow = false, tail = '100', timestamps = false, service = null } = options
 
         await this.validateComposeFile(composeFile)
         const cli = await this.detectDockerCompose()
@@ -87,6 +88,7 @@ class ComposeInvoker {
         const args = [...cli.args, '-f', composeFile, 'logs']
         if (follow) args.push('-f')
         if (tail) args.push('--tail', tail.toString())
+        if (timestamps) args.push('--timestamps')
         if (service) args.push(service)
 
         return this.execCommand(cli.command, args, {
@@ -162,7 +164,9 @@ class ComposeInvoker {
                 if (exitCode === 0) {
                     resolve(result)
                 } else {
-                    const error = new Error(`Command failed with exit code ${exitCode}: ${command} ${args.join(' ')}`)
+                    const errorMsg = `Command failed with exit code ${exitCode}: ${command} ${args.join(' ')}`
+                    const fullError = stderr || stdout || 'No error output'
+                    const error = new Error(`${errorMsg}\n\nDocker output:\n${fullError}`)
                     error.result = result
                     reject(error)
                 }

@@ -138,5 +138,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .idea/
-CLAUDE.md
-IMPLEMENTATION_SUMMARY.md
+
+# Generated files by xq-infra
+nginx-gateway.conf
+docker-compose.yml
+docker-compose.yaml
+xq-compose.yml
