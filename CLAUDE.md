@@ -21,17 +21,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **CLI Flow**: `bin/xq-infra.js` → `src/cli/index.js` (Commander.js) → Service layer
 
 **Core Services**:
-- `composeGenerator.js` - Converts YAML specs to docker-compose (empty, needs implementation)
-- `composeInvoker.js` - Executes docker-compose commands (empty, needs implementation)
-- `gateway.js` - Generates nginx proxy config for service routing
-- `registryAuth.js` - Docker registry login
+- `composeGenerator.js` - ✅ Converts YAML specs to docker-compose with gateway support
+- `composeInvoker.js` - ✅ Executes docker-compose commands with auto-detection
+- `gateway.js` - ✅ Generates nginx proxy config for service routing
+- `registryAuth.js` - ✅ Docker registry login functionality
 
 **Key Dependencies**:
-- `@chauhaidang/xq-js-common-kit` - Internal utilities
-- `commander` - CLI framework
-- `fs-extra`, `yaml`, `cross-spawn`
+- `@chauhaidang/xq-js-common-kit` (v1.0.3) - Internal utilities
+- `commander` (v11.0.0) - CLI framework
+- `fs-extra` (v11.1.1) - Enhanced file system operations
+- `yaml` (v2.3.1) - YAML parsing and serialization
+- `cross-spawn` (v7.0.6) - Cross-platform process spawning
+- `uuid` (v9.0.0) - UUID generation for temp files
+- `which` (v2.0.2) - Command detection utility
 
-**Current State**: Active development on `001-as-a-nodejs` branch. Core generator/invoker services need implementation per spec in `specs/001-as-a-nodejs/spec.md`.
+**Current State**: Version 0.0.2 on `main` branch. Core services fully implemented:
+- `composeGenerator.js` - ✅ Complete: Converts YAML specs to docker-compose with gateway support
+- `composeInvoker.js` - ✅ Complete: Executes docker-compose commands with auto-detection
+- `gateway.js` - ✅ Complete: Generates nginx proxy config for service routing
+- `registryAuth.js` - ✅ Complete: Docker registry login functionality
 
 
 **Coding standard**
