@@ -40,9 +40,3 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `composeInvoker.js` - ✅ Complete: Executes docker-compose commands with auto-detection
 - `gateway.js` - ✅ Complete: Generates nginx proxy config for service routing
 - `registryAuth.js` - ✅ Complete: Docker registry login functionality
-
-
-**Coding standard**
-- Follow .eslintrc.json rules
-- Follow best practices of javascript development
-- Use most suitable javascript design pattern

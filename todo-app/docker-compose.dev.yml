@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: todoapp
+      POSTGRES_USER: todouser
+      POSTGRES_PASSWORD: todopass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./src/todo-services/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+
+  todo-read-service:
+    build:
+      context: ./src/todo-services
+      dockerfile: read-service/Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_USER: todouser
+      DB_PASSWORD: todopass
+      DB_NAME: todoapp
+      DB_PORT: 5432
+      NODE_ENV: development
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    volumes:
+      - ./src/todo-services/read-service/src:/app/src
+      - ./src/todo-services/shared:/app/shared
+
+  todo-write-service:
+    build:
+      context: ./src/todo-services
+      dockerfile: write-service/Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_USER: todouser
+      DB_PASSWORD: todopass
+      DB_NAME: todoapp
+      DB_PORT: 5432
+      NODE_ENV: development
+      PORT: 3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+    volumes:
+      - ./src/todo-services/write-service/src:/app/src
+      - ./src/todo-services/shared:/app/shared
+
+volumes:
+  postgres_data:

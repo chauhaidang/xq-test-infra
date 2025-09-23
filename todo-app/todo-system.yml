@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres
+    tag: "15-alpine"
+    environment:
+      POSTGRES_DB: todoapp
+      POSTGRES_USER: todouser
+      POSTGRES_PASSWORD: todopass
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./src/todo-services/database/init.sql:/docker-entrypoint-initdb.d/init.sql"
+
+  todo-read-service:
+    image: todo-read-service
+    tag: latest
+    environment:
+      DB_HOST: postgres
+      DB_USER: todouser
+      DB_PASSWORD: todopass
+      DB_NAME: todoapp
+      DB_PORT: 5432
+      NODE_ENV: production
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+
+  todo-write-service:
+    image: todo-write-service
+    tag: latest
+    environment:
+      DB_HOST: postgres
+      DB_USER: todouser
+      DB_PASSWORD: todopass
+      DB_NAME: todoapp
+      DB_PORT: 5432
+      NODE_ENV: production
+      PORT: 3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres

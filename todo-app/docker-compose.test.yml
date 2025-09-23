@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: todoapp_test
+      POSTGRES_USER: todouser
+      POSTGRES_PASSWORD: todopass
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./src/todo-services/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  todo-read-service-test:
+    build:
+      context: ./src/todo-services
+      dockerfile: read-service/Dockerfile
+    environment:
+      DB_HOST: postgres-test
+      DB_USER: todouser
+      DB_PASSWORD: todopass
+      DB_NAME: todoapp_test
+      DB_PORT: 5432
+      NODE_ENV: test
+      PORT: 3001
+    ports:
+      - "3011:3001"
+    depends_on:
+      - postgres-test
+    command: npm test
+
+  todo-write-service-test:
+    build:
+      context: ./src/todo-services
+      dockerfile: write-service/Dockerfile
+    environment:
+      DB_HOST: postgres-test
+      DB_USER: todouser
+      DB_PASSWORD: todopass
+      DB_NAME: todoapp_test
+      DB_PORT: 5432
+      NODE_ENV: test
+      PORT: 3002
+    ports:
+      - "3012:3002"
+    depends_on:
+      - postgres-test
+    command: npm test
