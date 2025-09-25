@@ -29,7 +29,7 @@ module.exports = async function main() {
             try {
                 const outPath = await composeGenerator.generateCompose(absIn, {
                     gateway: opts.gateway,
-                    keepFile: !!opts.keepFile,
+                    keepFile: opts.keepFile,
                     overrides
                 })
                 console.log('Generated docker-compose at:', outPath)

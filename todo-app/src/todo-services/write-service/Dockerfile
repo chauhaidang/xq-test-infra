@@ -1,10 +1,12 @@
 FROM node:18-alpine
 
 WORKDIR /app
+ARG GITHUB_TOKEN
+ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
 # Copy package files
 COPY write-service/package*.json ./
-
+COPY write-service/.npmrc ./.npmrc
 # Install dependencies
 RUN npm ci --only=production
 

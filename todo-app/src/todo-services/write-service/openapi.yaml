@@ -1,0 +1,444 @@
+openapi: 3.0.3
+info:
+  title: Todo Write Service API
+  description: A microservice for creating, updating, and deleting todo items
+  version: 1.0.0
+  contact:
+    name: Todo App Team
+servers:
+  - url: http://localhost:3002
+    description: Local development server
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service and database connection
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/todos:
+    post:
+      summary: Create a new todo
+      description: Create a new todo item
+      tags:
+        - Todos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTodoRequest'
+      responses:
+        '201':
+          description: Todo created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/todos/{id}:
+    put:
+      summary: Update a todo
+      description: Update an existing todo item by ID
+      tags:
+        - Todos
+      parameters:
+        - name: id
+          in: path
+          description: Todo ID
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTodoRequest'
+      responses:
+        '200':
+          description: Todo updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoResponse'
+        '400':
+          description: Invalid request data or ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Todo not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a todo
+      description: Delete an existing todo item by ID
+      tags:
+        - Todos
+      parameters:
+        - name: id
+          in: path
+          description: Todo ID
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Todo deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid ID parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Todo not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/todos/bulk-status:
+    patch:
+      summary: Bulk update todo status
+      description: Update the completion status of multiple todos at once
+      tags:
+        - Bulk Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateRequest'
+      responses:
+        '200':
+          description: Todos updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/todos/completed:
+    delete:
+      summary: Delete all completed todos
+      description: Delete all todos that are marked as completed
+      tags:
+        - Bulk Operations
+      responses:
+        '200':
+          description: Completed todos deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Todo:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier
+        title:
+          type: string
+          description: Todo title
+          maxLength: 255
+        description:
+          type: string
+          description: Todo description
+          maxLength: 1000
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: Priority level
+        completed:
+          type: boolean
+          description: Completion status
+        due_date:
+          type: string
+          format: date-time
+          description: Due date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - title
+        - priority
+        - completed
+        - created_at
+        - updated_at
+
+    CreateTodoRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Todo title
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          description: Todo description
+          maxLength: 1000
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+          description: Priority level
+        due_date:
+          type: string
+          format: date-time
+          description: Due date
+        completed:
+          type: boolean
+          default: false
+          description: Completion status
+      required:
+        - title
+      example:
+        title: "Complete the project documentation"
+        description: "Write comprehensive documentation for the todo API"
+        priority: "high"
+        due_date: "2024-12-31T23:59:59Z"
+        completed: false
+
+    UpdateTodoRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Todo title
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          description: Todo description
+          maxLength: 1000
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: Priority level
+        due_date:
+          type: string
+          format: date-time
+          description: Due date
+        completed:
+          type: boolean
+          description: Completion status
+      example:
+        title: "Updated project documentation"
+        description: "Write and review comprehensive documentation for the todo API"
+        priority: "medium"
+        completed: true
+
+    BulkUpdateRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          minItems: 1
+          maxItems: 100
+          description: Array of todo IDs to update
+        completed:
+          type: boolean
+          description: New completion status for all specified todos
+      required:
+        - ids
+        - completed
+      example:
+        ids: [1, 2, 3, 4]
+        completed: true
+
+    TodoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Todo created successfully"
+        data:
+          $ref: '#/components/schemas/Todo'
+      required:
+        - success
+        - message
+        - data
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+      required:
+        - success
+        - message
+
+    BulkOperationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            affectedCount:
+              type: integer
+              description: Number of todos affected by the operation
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                    nullable: true
+      required:
+        - success
+        - message
+        - data
+
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            service:
+              type: string
+              example: "todo-write-service"
+            database:
+              type: object
+              properties:
+                healthy:
+                  type: boolean
+                connection:
+                  type: string
+                  example: "connected"
+            timestamp:
+              type: string
+              format: date-time
+            uptime:
+              type: number
+              description: Service uptime in seconds
+      required:
+        - success
+        - message
+        - data
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        error:
+          type: string
+      required:
+        - success
+        - message
+
+tags:
+  - name: Health
+    description: Health check operations
+  - name: Todos
+    description: Todo CRUD operations
+  - name: Bulk Operations
+    description: Bulk operations on todos

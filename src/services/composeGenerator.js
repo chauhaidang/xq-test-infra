@@ -25,7 +25,7 @@ class ComposeGenerator {
     async generateCompose(specPath, options = {}) {
         const {
             gateway: enableGateway = true,
-            keepFile = false,
+            keepFile = true,
             overrides = {}
         } = options
 

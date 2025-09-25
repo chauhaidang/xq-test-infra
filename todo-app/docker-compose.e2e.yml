@@ -13,16 +13,20 @@ services:
       - ./src/todo-services/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     tmpfs:
       - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todouser -d todoapp_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  todo-read-service-test:
-    container_name: todo-read-service-test
+  todo-read-service-e2e:
+    container_name: todo-read-service-e2e
     build:
       context: ./src/todo-services
       dockerfile: read-service/Dockerfile
       args:
         GITHUB_TOKEN: ${GITHUB_TOKEN}
     environment:
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
       - DB_HOST=postgres-test
       - DB_USER=todouser
       - DB_PASSWORD=todopass
@@ -31,28 +35,32 @@ services:
       - NODE_ENV=test
       - PORT=3001
     ports:
-      - "3011:3001"
+      - "3001:3001"
     depends_on:
-      - postgres-test
-    command: npm test
+      postgres-test:
+        condition: service_healthy
+    restart: on-failure
+    command: npm start
 
-  todo-write-service-test:
-    container_name: todo-write-service-test
+  todo-write-service-e2e:
+    container_name: todo-write-service-e2e
     build:
       context: ./src/todo-services
       dockerfile: write-service/Dockerfile
       args:
         GITHUB_TOKEN: ${GITHUB_TOKEN}
     environment:
-      DB_HOST: postgres-test
-      DB_USER: todouser
-      DB_PASSWORD: todopass
-      DB_NAME: todoapp_test
-      DB_PORT: 5432
-      NODE_ENV: test
-      PORT: 3002
+      - DB_HOST=postgres-test
+      - DB_USER=todouser
+      - DB_PASSWORD=todopass
+      - DB_NAME=todoapp_test
+      - DB_PORT=5432
+      - NODE_ENV=test
+      - PORT=3002
     ports:
-      - "3012:3002"
+      - "3002:3002"
     depends_on:
-      - postgres-test
-    command: npm test
+      postgres-test:
+        condition: service_healthy
+    restart: on-failure
+    command: npm start

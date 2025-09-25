@@ -1,0 +1,337 @@
+openapi: 3.0.3
+info:
+  title: Todo Read Service API
+  description: A microservice for reading todo items with filtering, search, and statistics capabilities
+  version: 1.0.0
+  contact:
+    name: Todo App Team
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service and database connection
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/todos:
+    get:
+      summary: Get all todos
+      description: Retrieve todos with optional filtering, searching, and pagination
+      tags:
+        - Todos
+      parameters:
+        - name: completed
+          in: query
+          description: Filter by completion status
+          required: false
+          schema:
+            type: boolean
+        - name: priority
+          in: query
+          description: Filter by priority level
+          required: false
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: search
+          in: query
+          description: Search in title and description
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Todos retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/todos/statistics:
+    get:
+      summary: Get todo statistics
+      description: Retrieve statistics about todos including counts by status and priority
+      tags:
+        - Statistics
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatisticsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/todos/{id}:
+    get:
+      summary: Get todo by ID
+      description: Retrieve a specific todo item by its ID
+      tags:
+        - Todos
+      parameters:
+        - name: id
+          in: path
+          description: Todo ID
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Todo retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoResponse'
+        '400':
+          description: Invalid ID parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Todo not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Todo:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier
+        title:
+          type: string
+          description: Todo title
+          maxLength: 255
+        description:
+          type: string
+          description: Todo description
+          maxLength: 1000
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: Priority level
+        completed:
+          type: boolean
+          description: Completion status
+        due_date:
+          type: string
+          format: date-time
+          description: Due date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - title
+        - priority
+        - completed
+        - created_at
+        - updated_at
+
+    TodoListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Todos retrieved successfully"
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Todo'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+      required:
+        - success
+        - message
+        - data
+
+    TodoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Todo retrieved successfully"
+        data:
+          $ref: '#/components/schemas/Todo'
+      required:
+        - success
+        - message
+        - data
+
+    StatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Todo statistics retrieved successfully"
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of todos
+            completed:
+              type: integer
+              description: Number of completed todos
+            pending:
+              type: integer
+              description: Number of pending todos
+            byPriority:
+              type: object
+              properties:
+                high:
+                  type: integer
+                medium:
+                  type: integer
+                low:
+                  type: integer
+          required:
+            - total
+            - completed
+            - pending
+            - byPriority
+      required:
+        - success
+        - message
+        - data
+
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            service:
+              type: string
+              example: "todo-read-service"
+            database:
+              type: object
+              properties:
+                healthy:
+                  type: boolean
+                connection:
+                  type: string
+                  example: "connected"
+            timestamp:
+              type: string
+              format: date-time
+            uptime:
+              type: number
+              description: Service uptime in seconds
+      required:
+        - success
+        - message
+        - data
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        error:
+          type: string
+      required:
+        - success
+        - message
+
+tags:
+  - name: Health
+    description: Health check operations
+  - name: Todos
+    description: Todo reading operations
+  - name: Statistics
+    description: Todo statistics operations

@@ -25,6 +25,7 @@ services:
       DB_PORT: 5432
       NODE_ENV: development
       PORT: 3001
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
     ports:
       - "3001:3001"
     depends_on:
@@ -45,6 +46,7 @@ services:
       DB_PORT: 5432
       NODE_ENV: development
       PORT: 3002
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
     ports:
       - "3002:3002"
     depends_on:
