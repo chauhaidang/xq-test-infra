@@ -40,3 +40,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `composeInvoker.js` - ✅ Complete: Executes docker-compose commands with auto-detection
 - `gateway.js` - ✅ Complete: Generates nginx proxy config for service routing
 - `registryAuth.js` - ✅ Complete: Docker registry login functionality
+
+### Notes
+- When running tests in any e2e folder, you need to use docker-compose to spin up all containers before run test.

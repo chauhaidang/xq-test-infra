@@ -65,7 +65,6 @@ project/
 ## Documentation
 
 - **[Usage Guide](./USAGE.md)** - Comprehensive usage instructions
-- **[Change Log](./CHANGE.md)** - Version history and migration guide
 - **[Examples](./examples/)** - Sample XQ specifications
 
 ## Requirements

@@ -299,7 +299,7 @@ describe('Data Consistency Tests', () => {
         const todoData = generateUniqueTodoData({
           title: `Pagination Test Todo ${i + 1} ${testId}`,
           priority: ['low', 'medium', 'high'][i % 3],
-          completed: i < 6 // First 6 are pending, last 6 are completed
+          completed: i >= 6 // First 6 are pending, last 6 are completed
         })
 
         const response = await writeClient.post('/api/todos', todoData)
@@ -311,7 +311,7 @@ describe('Data Consistency Tests', () => {
 
       // 2. Test pagination with search filter
       const page1Response = await readClient.get(
-        `/api/todos?search=Pagination Test&page=1&limit=5`
+        '/api/todos?search=Pagination Test&page=1&limit=5'
       )
       const page1Data = expectTodoResponse(page1Response, 200)
 
@@ -323,7 +323,7 @@ describe('Data Consistency Tests', () => {
 
       if (page1Data.pagination.totalPages > 1) {
         const page2Response = await readClient.get(
-          `/api/todos?search=Pagination Test&page=2&limit=5`
+          '/api/todos?search=Pagination Test&page=2&limit=5'
         )
         const page2Data = expectTodoResponse(page2Response, 200)
 
@@ -349,7 +349,7 @@ describe('Data Consistency Tests', () => {
 
       // 4. Verify pagination still works correctly with updated data
       const afterUpdateResponse = await readClient.get(
-        `/api/todos?search=Pagination Test&completed=true&page=1&limit=5`
+        '/api/todos?search=Pagination Test&completed=true&page=1&limit=5'
       )
       const afterUpdateData = expectTodoResponse(afterUpdateResponse, 200)
 
@@ -358,7 +358,7 @@ describe('Data Consistency Tests', () => {
 
       // All created todos should now be completed
       const allCompletedResponse = await readClient.get(
-        `/api/todos?search=Pagination Test&completed=true`
+        '/api/todos?search=Pagination Test&completed=true'
       )
       const allCompletedData = expectTodoResponse(allCompletedResponse, 200)
 
@@ -366,6 +366,6 @@ describe('Data Consistency Tests', () => {
         todo.title.includes(testId.toString())
       )
       expect(ourCompletedTodos).toHaveLength(12)
-    })
+     })
   })
 })

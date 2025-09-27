@@ -225,6 +225,10 @@ npm run test:coverage
 
 # Watch mode
 npm run test:watch
+
+# E2E tests
+Make sure you use docker-compose with file docker-compose-e2e.yaml before run e2e tests
+For jest test, let's use --runInBand option for simplicity
 ```
 
 ### Linting
