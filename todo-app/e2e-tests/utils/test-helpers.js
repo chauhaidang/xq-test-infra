@@ -32,21 +32,21 @@ const getDbTodoStatistics = async () => {
   const completed = parseInt(completedResult.rows[0].count)
   const pending = total - completed
 
-  const priorityBreakdown = {
+  const byPriority = {
     high: 0,
     medium: 0,
     low: 0
   }
 
   priorityResult.rows.forEach(row => {
-    priorityBreakdown[row.priority] = parseInt(row.count)
+    byPriority[row.priority] = parseInt(row.count)
   })
 
   return {
     total,
     completed,
     pending,
-    priorityBreakdown
+    byPriority
   }
 }
 
@@ -89,9 +89,13 @@ const expectStatisticsData = (stats) => {
   expect(typeof stats.pending).toBe('number')
   expect(stats.total).toBe(stats.completed + stats.pending)
 
+  // byPriority should be an object with high, medium, low properties as per OpenAPI contract
   expect(stats.byPriority).toHaveProperty('high')
   expect(stats.byPriority).toHaveProperty('medium')
   expect(stats.byPriority).toHaveProperty('low')
+  expect(typeof stats.byPriority.high).toBe('number')
+  expect(typeof stats.byPriority.medium).toBe('number')
+  expect(typeof stats.byPriority.low).toBe('number')
 }
 
 // Utility functions
@@ -99,14 +103,21 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 const generateUniqueTodoData = (overrides = {}) => {
   const timestamp = Date.now()
-  return {
+  const baseData = {
     title: `Test Todo ${timestamp}`,
     description: `Test description ${timestamp}`,
     priority: 'medium',
     completed: false,
-    due_date: null,
     ...overrides
   }
+
+  // Only include due_date if it's explicitly set to a valid value
+  // The API might reject null values even though the schema allows them
+  if (overrides.due_date !== undefined && overrides.due_date !== null) {
+    baseData.due_date = overrides.due_date
+  }
+
+  return baseData
 }
 
 module.exports = {

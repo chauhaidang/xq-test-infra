@@ -67,13 +67,19 @@ class TodoService {
             const pendingCount = totalCount - completedCount
             const completionRate = totalCount > 0 ? (completedCount / totalCount * 100).toFixed(2) : 0
 
+            // Transform priorityStats array to byPriority object to match OpenAPI contract
+            const byPriority = { high: 0, medium: 0, low: 0 }
+            priorityStats.forEach(stat => {
+                byPriority[stat.priority] = parseInt(stat.count)
+            })
+
             return {
                 data: {
                     total: totalCount,
                     completed: completedCount,
                     pending: pendingCount,
                     completionRate: parseFloat(completionRate),
-                    priorityBreakdown: priorityStats
+                    byPriority
                 }
             }
         } catch (error) {

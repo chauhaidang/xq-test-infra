@@ -1,5 +1,5 @@
 const TodoService = require('../services/todoService')
-const { query } = require('express-validator')
+const { query, param } = require('express-validator')
 const { logger } = require('@chauhaidang/xq-js-common-kit')
 
 class TodoController {
@@ -18,7 +18,7 @@ class TodoController {
                 query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100')
             ],
             getTodoById: [
-                query('id').isInt({ min: 1 }).withMessage('id must be a positive integer')
+                param('id').isInt({ min: 1 }).withMessage('id must be a positive integer')
             ]
         }
     }
