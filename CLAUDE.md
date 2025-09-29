@@ -16,6 +16,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `xq-infra up -f <compose>` - Start containers
 - `xq-infra down -f <compose>` - Stop containers
 
+### Docker Build (todo-app)
+- `./build-read-service.sh` - Build read service image
+- `./build-write-service.sh` - Build write service image
+- `./build-all-services.sh` - Build both services
+- Context path: `src/todo-services/` (relative to todo-app directory)
+
 ## Architecture
 
 **CLI Flow**: `bin/xq-infra.js` → `src/cli/index.js` (Commander.js) → Service layer
@@ -43,3 +49,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Notes
 - When running tests in any e2e folder, you need to use docker-compose to spin up all containers before run test.
+- This project has 2 components: todo-app (in todo-app directory) is an application used for testing the xq-infra (in src directory)
+
+### Agents:
+- Use agent `nodejs-quality-engineer`
