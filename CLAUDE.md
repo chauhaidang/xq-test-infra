@@ -50,6 +50,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Notes
 - When running tests in any e2e folder, you need to use docker-compose to spin up all containers before run test.
 - This project has 2 components: todo-app (in todo-app directory) is an application used for testing the xq-infra (in src directory)
+- For information of cli: read [this](./README.md) for comprehensive usage guide
+- For information of todo-app: read [this](./todo-app/README.md) 
 
 ### Agents:
 - Use agent `nodejs-quality-engineer`

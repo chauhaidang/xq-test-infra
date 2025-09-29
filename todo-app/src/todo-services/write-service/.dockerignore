@@ -1,0 +1,61 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage
+.nyc_output
+*.test.js
+*.spec.js
+tests/
+__tests__/
+
+# Development files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.log
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Build artifacts
+dist/
+build/
+tmp/
+
+# Service-specific exclusions
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Other services (exclude from build context)
+../read-service/
+../database/

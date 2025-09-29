@@ -54,7 +54,13 @@ echo "Tag: ${TAG}"
 echo "Context: src/todo-services/"
 echo ""
 
-# Build arguments
+# Security check for GitHub token
+if [ -z "$GITHUB_TOKEN" ]; then
+    echo "⚠️  WARNING: GITHUB_TOKEN not provided. Build may fail if private packages are required."
+    echo "   Use: --github-token YOUR_TOKEN"
+fi
+
+# Build arguments (token only used in build stage, not persisted)
 BUILD_ARGS=""
 if [ ! -z "$GITHUB_TOKEN" ]; then
     BUILD_ARGS="--build-arg GITHUB_TOKEN=${GITHUB_TOKEN}"
@@ -64,6 +70,7 @@ fi
 echo "📖 Building read service..."
 docker build \
     ${BUILD_ARGS} \
+    --target production \
     -t "${READ_IMAGE}:${TAG}" \
     -f src/todo-services/read-service/Dockerfile \
     src/todo-services/
@@ -75,11 +82,21 @@ echo ""
 echo "✏️  Building write service..."
 docker build \
     ${BUILD_ARGS} \
+    --target production \
     -t "${WRITE_IMAGE}:${TAG}" \
     -f src/todo-services/write-service/Dockerfile \
     src/todo-services/
 
 echo "✅ Write service built: ${WRITE_IMAGE}:${TAG}"
+echo ""
+
+# Security verification
+echo "🔒 Verifying image security..."
+echo "Checking read service..."
+docker run --rm "${READ_IMAGE}:${TAG}" sh -c 'env | grep -i github || echo "✅ No GitHub tokens found"'
+echo "Checking write service..."
+docker run --rm "${WRITE_IMAGE}:${TAG}" sh -c 'env | grep -i github || echo "✅ No GitHub tokens found"'
+
 echo ""
 
 echo "🎉 All services built successfully!"

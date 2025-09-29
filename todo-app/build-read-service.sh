@@ -48,18 +48,29 @@ echo "Image: ${IMAGE_NAME}:${TAG}"
 echo "Context: src/todo-services/"
 echo ""
 
-# Build arguments
+# Security check for GitHub token
+if [ -z "$GITHUB_TOKEN" ]; then
+    echo "⚠️  WARNING: GITHUB_TOKEN not provided. Build may fail if private packages are required."
+    echo "   Use: --github-token YOUR_TOKEN"
+fi
+
+# Build arguments (token only used in build stage, not persisted)
 BUILD_ARGS=""
 if [ ! -z "$GITHUB_TOKEN" ]; then
     BUILD_ARGS="--build-arg GITHUB_TOKEN=${GITHUB_TOKEN}"
 fi
 
-# Build the Docker image
+# Build the Docker image with multi-stage build
 docker build \
     ${BUILD_ARGS} \
+    --target production \
     -t "${IMAGE_NAME}:${TAG}" \
     -f src/todo-services/read-service/Dockerfile \
     src/todo-services/
+
+# Security verification
+echo "🔒 Verifying image security..."
+docker run --rm "${IMAGE_NAME}:${TAG}" sh -c 'env | grep -i github || echo "✅ No GitHub tokens found in environment"'
 
 echo ""
 echo "✅ Successfully built ${IMAGE_NAME}:${TAG}"
