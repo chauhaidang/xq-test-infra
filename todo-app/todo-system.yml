@@ -1,7 +1,16 @@
+# Centralized dependency groups
+dependencies:
+  database:
+    - postgres
+
+# Port range configuration
+portRange:
+  start: 3001
+
 services:
   postgres:
     image: postgres
-    tag: "15-alpine"
+    tag: "latest"
     environment:
       POSTGRES_DB: todoapp
       POSTGRES_USER: todouser
@@ -14,6 +23,7 @@ services:
   todo-read-service:
     image: todo-read-service
     tag: latest
+    port: 3000  # Container port - host port will be auto-assigned
     environment:
       DB_HOST: postgres
       DB_USER: todouser
@@ -21,15 +31,14 @@ services:
       DB_NAME: todoapp
       DB_PORT: 5432
       NODE_ENV: production
-      PORT: 3001
-    ports:
-      - "3001:3001"
-    depends_on:
-      - postgres
+      PORT: 3000
+    dependencyGroups:
+      - database
 
   todo-write-service:
     image: todo-write-service
     tag: latest
+    port: 3000  # Container port - host port will be auto-assigned
     environment:
       DB_HOST: postgres
       DB_USER: todouser
@@ -37,8 +46,6 @@ services:
       DB_NAME: todoapp
       DB_PORT: 5432
       NODE_ENV: production
-      PORT: 3002
-    ports:
-      - "3002:3002"
-    depends_on:
-      - postgres
+      PORT: 3000
+    dependencyGroups:
+      - database

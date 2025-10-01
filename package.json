@@ -2,7 +2,6 @@
   "name": "xq-test-infra",
   "version": "0.0.2",
   "description": "A test infra cli used to spin up test environment",
-  "main": "index.js",
   "bin": {
     "xq-infra": "./bin/xq-infra.js"
   },

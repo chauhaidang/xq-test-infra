@@ -87,10 +87,25 @@ class ComposeGenerator {
             }
         }
 
+        // Process dependencies if centralized dependencies are defined
+        const centralizedDeps = spec.dependencies || {}
+
+        // Auto port assignment - track used ports
+        const usedPorts = new Set()
+        let nextPort = spec.portRange?.start || 3000
+
         // Add services from spec
         if (spec.services) {
             Object.entries(spec.services).forEach(([name, service]) => {
-                compose.services[name] = this.convertServiceToCompose(service)
+                compose.services[name] = this.convertServiceToCompose(service, centralizedDeps, usedPorts, nextPort)
+
+                // Update nextPort for auto assignment
+                if (service.autoPort !== false) {
+                    nextPort++
+                    while (usedPorts.has(nextPort)) {
+                        nextPort++
+                    }
+                }
             })
         }
 
@@ -102,15 +117,31 @@ class ComposeGenerator {
         return compose
     }
 
-    convertServiceToCompose(service) {
+    convertServiceToCompose(service, centralizedDeps = {}, usedPorts = new Set(), currentPort = 3000) {
         const composeService = {
             image: `${service.image}:${service.tag || 'latest'}`,
             networks: ['xq-network']
         }
 
-        // Add optional configurations
+        // Handle ports - auto assignment or manual
         if (service.ports) {
+            // Manual port specification
             composeService.ports = service.ports
+            // Track used ports
+            service.ports.forEach(port => {
+                const hostPort = parseInt(port.split(':')[0])
+                if (!isNaN(hostPort)) {
+                    usedPorts.add(hostPort)
+                }
+            })
+        } else if (service.port && service.autoPort !== false) {
+            // Auto port assignment
+            let hostPort = currentPort
+            while (usedPorts.has(hostPort)) {
+                hostPort++
+            }
+            composeService.ports = [`${hostPort}:${service.port}`]
+            usedPorts.add(hostPort)
         }
 
         if (service.environment) {
@@ -125,8 +156,24 @@ class ComposeGenerator {
             composeService.command = service.command
         }
 
+        // Handle dependencies - check both service-level and centralized
+        let dependencies = []
+
         if (service.depends_on) {
-            composeService.depends_on = service.depends_on
+            dependencies = [...service.depends_on]
+        }
+
+        // Add centralized dependencies if service is in dependency groups
+        if (service.dependencyGroups) {
+            service.dependencyGroups.forEach(group => {
+                if (centralizedDeps[group]) {
+                    dependencies = [...dependencies, ...centralizedDeps[group]]
+                }
+            })
+        }
+
+        if (dependencies.length > 0) {
+            composeService.depends_on = [...new Set(dependencies)] // Remove duplicates
         }
 
         return composeService

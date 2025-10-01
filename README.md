@@ -44,6 +44,7 @@ EOF
 - **Docker Integration**: Works with Docker Compose v2 and v1
 - **CI/CD Ready**: GitHub Actions integration examples
 - **Multi-stage Security**: Secure Docker builds with token management
+- **Next change**: see [TASKS](./TASKS.md)
 
 ## 📋 Table of Contents
 
