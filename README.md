@@ -2,6 +2,8 @@
 
 A simplified CLI tool for spinning up Docker-based test environments with automatic log capture and built-in gateway support.
 
+[![CI](https://github.com/chauhaidang/xq-test-infra/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chauhaidang/xq-test-infra/actions/workflows/ci.yml)
+
 ## 🚀 Quick Start
 
 ```bash
