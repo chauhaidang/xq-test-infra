@@ -5,7 +5,6 @@ const {
   generateUniqueTodoData,
   getDbTodoStatistics,
   getDbTodosByPriority,
-  getDbCompletedTodosCount,
   delay
 } = require('../utils/test-helpers')
 
@@ -366,6 +365,6 @@ describe('Data Consistency Tests', () => {
         todo.title.includes(testId.toString())
       )
       expect(ourCompletedTodos).toHaveLength(12)
-     })
+    })
   })
 })

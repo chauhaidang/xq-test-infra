@@ -20,8 +20,7 @@ describe('Database Integration Tests', () => {
     // Create a new todo
     const insertResult = await query(
       `INSERT INTO todos (title, description, priority, completed, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, NOW(), NOW())
-       RETURNING *`,
+       VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *`,
       ['Database Test Todo', 'Testing direct database operations', 'high', false]
     )
 
@@ -40,9 +39,11 @@ describe('Database Integration Tests', () => {
 
     // Update the todo
     const updateResult = await query(
-      `UPDATE todos SET title = $1, completed = $2, updated_at = NOW()
-       WHERE id = $3
-       RETURNING *`,
+      `UPDATE todos
+       SET title      = $1,
+           completed  = $2,
+           updated_at = NOW()
+       WHERE id = $3 RETURNING *`,
       ['Updated Database Test Todo', true, todoId]
     )
 
@@ -62,7 +63,7 @@ describe('Database Integration Tests', () => {
   test('should support filtering and searching operations', async () => {
     // Test priority filtering
     const highPriorityResult = await query(
-      "SELECT * FROM todos WHERE priority = 'high' ORDER BY id"
+      'SELECT * FROM todos WHERE priority = \'high\' ORDER BY id'
     )
     expect(highPriorityResult.rows.length).toBeGreaterThan(0)
     highPriorityResult.rows.forEach(todo => {
@@ -71,7 +72,7 @@ describe('Database Integration Tests', () => {
 
     // Test completion status filtering
     const completedResult = await query(
-      "SELECT * FROM todos WHERE completed = true ORDER BY id"
+      'SELECT * FROM todos WHERE completed = true ORDER BY id'
     )
     expect(completedResult.rows.length).toBeGreaterThan(0)
     completedResult.rows.forEach(todo => {
@@ -80,7 +81,7 @@ describe('Database Integration Tests', () => {
 
     // Test text search functionality
     const searchResult = await query(
-      "SELECT * FROM todos WHERE title ILIKE '%Development%' OR description ILIKE '%Development%'"
+      'SELECT * FROM todos WHERE title ILIKE \'%Development%\' OR description ILIKE \'%Development%\''
     )
     expect(searchResult.rows.length).toBeGreaterThan(0)
     searchResult.rows.forEach(todo => {
@@ -110,10 +111,10 @@ describe('Database Integration Tests', () => {
 
     // Get priority breakdown
     const priorityResult = await query(`
-      SELECT priority, COUNT(*) as count
-      FROM todos
-      GROUP BY priority
-      ORDER BY priority
+        SELECT priority, COUNT(*) as count
+        FROM todos
+        GROUP BY priority
+        ORDER BY priority
     `)
 
     expect(priorityResult.rows.length).toBeGreaterThan(0)
@@ -143,6 +144,7 @@ describe('Database Integration Tests', () => {
          VALUES ($1, $2, $3, $4, NOW(), NOW())`,
         [null, 'No title provided', 'medium', false]
       )
+      // eslint-disable-next-line no-undef
       fail('Expected NOT NULL constraint violation')
     } catch (error) {
       expect(error.code).toBe('23502') // NOT NULL violation
@@ -155,6 +157,7 @@ describe('Database Integration Tests', () => {
          VALUES ($1, $2, $3, $4, NOW(), NOW())`,
         ['Test Todo', 'Testing priority constraint', 'invalid', false]
       )
+      // eslint-disable-next-line no-undef
       fail('Expected CHECK constraint violation for priority')
     } catch (error) {
       expect(error.code).toBe('23514') // CHECK constraint violation

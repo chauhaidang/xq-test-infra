@@ -111,6 +111,7 @@ describe('Cross-Service Integration Tests', () => {
       // 4. Verify todo is removed via Read Service
       try {
         await readClient.get(`/api/todos/${todoId}`)
+        // eslint-disable-next-line no-undef
         fail('Expected 404 error when reading deleted todo')
       } catch (error) {
         expect(error.response.status).toBe(404)
@@ -213,6 +214,7 @@ describe('Cross-Service Integration Tests', () => {
       for (const id of completedTodos) {
         try {
           await readClient.get(`/api/todos/${id}`)
+          // eslint-disable-next-line no-undef
           fail(`Expected 404 for deleted completed todo ${id}`)
         } catch (error) {
           expect(error.response.status).toBe(404)
@@ -236,6 +238,7 @@ describe('Cross-Service Integration Tests', () => {
           // Missing required title
           description: 'No title provided'
         })
+        // eslint-disable-next-line no-undef
         fail('Expected 400 error for invalid todo data')
       } catch (error) {
         expect(error.response.status).toBe(400)
@@ -247,6 +250,7 @@ describe('Cross-Service Integration Tests', () => {
       // Try to read non-existent todo
       try {
         await readClient.get('/api/todos/999999')
+        // eslint-disable-next-line no-undef
         fail('Expected 404 error for non-existent todo')
       } catch (error) {
         expect(error.response.status).toBe(404)

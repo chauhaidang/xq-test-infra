@@ -46,7 +46,7 @@ if (process.env.VERBOSE_HTTP === 'true') {
     client.interceptors.request.use((config) => {
       console.log(`🌐 ${serviceName}: ${config.method?.toUpperCase()} ${config.url}`)
       if (config.data) {
-        console.log(`   📦 Body:`, JSON.stringify(config.data, null, 2))
+        console.log('   📦 Body:', JSON.stringify(config.data, null, 2))
       }
       return config
     })

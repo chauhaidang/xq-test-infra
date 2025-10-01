@@ -89,6 +89,7 @@ describe('Complete CRUD Workflow Tests', () => {
       // 6. VERIFY: Confirm deletion via Read Service (should return 404)
       try {
         await readClient.get(`/api/todos/${todoId}`)
+        // eslint-disable-next-line no-undef
         fail('Expected 404 error when reading deleted todo')
       } catch (error) {
         expect(error.response.status).toBe(404)
@@ -103,7 +104,7 @@ describe('Complete CRUD Workflow Tests', () => {
 
   describe('Priority-based Workflow', () => {
     test('should handle priority-based workflow: Create high priority → Filter → Update → Filter', async () => {
-      const initialCount = await getDbTodoCount()
+      await getDbTodoCount()
 
       // 1. Create high priority todos
       const highPriorityTodos = []
@@ -275,6 +276,7 @@ describe('Complete CRUD Workflow Tests', () => {
       for (const testCase of invalidCases) {
         try {
           await writeClient.post('/api/todos', testCase.data)
+          // eslint-disable-next-line no-undef
           fail(`Expected validation error for ${testCase.name}`)
         } catch (error) {
           expect(error.response.status).toBe(400)
@@ -286,6 +288,7 @@ describe('Complete CRUD Workflow Tests', () => {
       // Test Read Service validation
       try {
         await readClient.get('/api/todos/invalid-id')
+        // eslint-disable-next-line no-undef
         fail('Expected validation error for invalid ID')
       } catch (error) {
         expect(error.response.status).toBe(400)
@@ -295,6 +298,7 @@ describe('Complete CRUD Workflow Tests', () => {
       // Test invalid query parameters
       try {
         await readClient.get('/api/todos?priority=invalid&completed=not-boolean&page=-1')
+        // eslint-disable-next-line no-undef
         fail('Expected validation error for invalid query parameters')
       } catch (error) {
         expect(error.response.status).toBe(400)
