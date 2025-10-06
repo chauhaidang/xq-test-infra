@@ -80,14 +80,15 @@ describe('ComposeGenerator', () => {
 
       const gateway = compose.services['xq-gateway']
       expect(gateway.image).toBe('nginx:alpine')
-      expect(gateway.ports).toEqual(['8080:80'])
+      // Gateway port should be 8081 (8080 is used by web-app)
+      expect(gateway.ports).toEqual(['8081:80'])
       expect(gateway.networks).toEqual(['xq-network'])
       expect(gateway.depends_on).toContain('web-app')
       expect(gateway.depends_on).toContain('api-service')
     })
 
     test('should skip gateway when disabled', async () => {
-      const composePath = await composeGenerator.generateCompose(testSpecPath, null, { gateway: false })
+      const composePath = await composeGenerator.generateCompose(testSpecPath, { gateway: false })
       const composeContent = await fs.readFile(composePath, 'utf8')
       const compose = YAML.parse(composeContent)
 
@@ -106,7 +107,7 @@ describe('ComposeGenerator', () => {
         }
       }
 
-      const composePath = await composeGenerator.generateCompose(testSpecPath, null, { overrides })
+      const composePath = await composeGenerator.generateCompose(testSpecPath, { overrides })
       const composeContent = await fs.readFile(composePath, 'utf8')
       const compose = YAML.parse(composeContent)
 
@@ -115,16 +116,16 @@ describe('ComposeGenerator', () => {
       expect(webApp.environment).toEqual({ NODE_ENV: 'production' })
     })
 
-    test('should write to specified output path', async () => {
-      const outputPath = path.join(tempDir, 'custom-compose.yml')
-      const composePath = await composeGenerator.generateCompose(testSpecPath, outputPath)
+    test('should write to default output path', async () => {
+      const composePath = await composeGenerator.generateCompose(testSpecPath)
+      const expectedPath = path.join(process.cwd(), 'xq-compose.yml')
 
-      expect(composePath).toBe(outputPath)
-      expect(await fs.pathExists(outputPath)).toBe(true)
+      expect(composePath).toBe(expectedPath)
+      expect(await fs.pathExists(expectedPath)).toBe(true)
     })
 
     test('should handle keepFile option', async () => {
-      const composePath = await composeGenerator.generateCompose(testSpecPath, null, { keepFile: true })
+      const composePath = await composeGenerator.generateCompose(testSpecPath, { keepFile: true })
 
       expect(await fs.pathExists(composePath)).toBe(true)
 
@@ -219,8 +220,8 @@ describe('ComposeGenerator', () => {
   })
 
   describe('cleanup', () => {
-    test('should clean up temp files on process signals', async () => {
-      const composePath = await composeGenerator.generateCompose(testSpecPath)
+    test('should clean up temp files when keepFile is false', async () => {
+      const composePath = await composeGenerator.generateCompose(testSpecPath, { keepFile: false })
       expect(await fs.pathExists(composePath)).toBe(true)
 
       composeGenerator.cleanupTempFiles()

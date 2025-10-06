@@ -254,7 +254,7 @@ services:
       await composeInvoker.up(testComposePath, { detached: true })
 
       expect(spawn).toHaveBeenCalledWith('docker',
-        ['compose', '-f', testComposePath, 'up', '-d'],
+        ['compose', '-f', testComposePath, 'up', '-d', '--remove-orphans'],
         expect.objectContaining({
           stdio: 'pipe'
         })
@@ -277,7 +277,7 @@ services:
       await composeInvoker.up(testComposePath, { pull: true })
 
       expect(spawn).toHaveBeenCalledWith('docker',
-        ['compose', '-f', testComposePath, 'up', '--pull', 'always'],
+        ['compose', '-f', testComposePath, 'up', '-d', '--pull', 'always', '--remove-orphans'],
         expect.any(Object)
       )
     })

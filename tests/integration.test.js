@@ -106,8 +106,8 @@ describe('Integration Tests', () => {
     })
 
     test('should generate docker-compose file', async () => {
-      const outputPath = path.join(tempDir, 'generated-compose.yml')
-      const result = await runCLI(['generate', '-f', testSpecPath, '-o', outputPath])
+      const outputPath = path.join(process.cwd(), 'xq-compose.yml')
+      const result = await runCLI(['generate', '-f', testSpecPath])
 
       expect(result.code).toBe(0)
       expect(result.stdout).toContain('Generated docker-compose at:')
@@ -123,8 +123,8 @@ describe('Integration Tests', () => {
     })
 
     test('should generate compose without gateway', async () => {
-      const outputPath = path.join(tempDir, 'no-gateway-compose.yml')
-      const result = await runCLI(['generate', '-f', testSpecPath, '-o', outputPath, '--no-gateway'])
+      const outputPath = path.join(process.cwd(), 'xq-compose.yml')
+      const result = await runCLI(['generate', '-f', testSpecPath, '--no-gateway'])
 
       expect(result.code).toBe(0)
       expect(await fs.pathExists(outputPath)).toBe(true)
@@ -163,8 +163,8 @@ describe('Integration Tests', () => {
         return
       }
 
-      composePath = path.join(tempDir, 'test-compose.yml')
-      const generateResult = await runCLI(['generate', '-f', testSpecPath, '-o', composePath])
+      composePath = path.join(process.cwd(), 'xq-compose.yml')
+      const generateResult = await runCLI(['generate', '-f', testSpecPath])
       expect(generateResult.code).toBe(0)
     })
 
@@ -175,7 +175,7 @@ describe('Integration Tests', () => {
 
       // Clean up any running containers
       try {
-        await runCLI(['down', '-f', composePath])
+        await runCLI(['down'])
       } catch {
         // Ignore cleanup errors
       }
@@ -187,8 +187,8 @@ describe('Integration Tests', () => {
         return
       }
 
-      // Start containers in detached mode
-      const upResult = await runCLI(['up', '-f', composePath, '-d'])
+      // Start containers in detached mode (detached is default)
+      const upResult = await runCLI(['up'])
       expect(upResult.code).toBe(0)
 
       // Give containers time to start
@@ -206,7 +206,7 @@ describe('Integration Tests', () => {
       expect(psResult.stdout).toMatch(/nginx-test|redis-test|xq-gateway/)
 
       // Stop containers
-      const downResult = await runCLI(['down', '-f', composePath])
+      const downResult = await runCLI(['down'])
       expect(downResult.code).toBe(0)
     }, 30000) // Increase timeout for Docker operations
 
@@ -216,26 +216,34 @@ describe('Integration Tests', () => {
         return
       }
 
-      const result = await runCLI(['up', '-f', composePath, '-d', '--pull'])
+      const result = await runCLI(['up', '--pull'])
       expect(result.code).toBe(0)
 
       // Clean up
-      await runCLI(['down', '-f', composePath])
+      await runCLI(['down'])
     }, 60000) // Longer timeout for image pulling
 
     test('should handle invalid compose file for up command', async () => {
-      const invalidComposePath = path.join(tempDir, 'invalid-compose.yml')
+      // Remove xq-compose.yml so up command fails
+      const composeFile = path.join(process.cwd(), 'xq-compose.yml')
+      if (await fs.pathExists(composeFile)) {
+        await fs.remove(composeFile)
+      }
 
-      const result = await runCLI(['up', '-f', invalidComposePath])
+      const result = await runCLI(['up'])
 
       expect(result.code).toBe(3)
       expect(result.stderr).toContain('Failed to run up')
     })
 
     test('should handle invalid compose file for down command', async () => {
-      const invalidComposePath = path.join(tempDir, 'invalid-compose.yml')
+      // Remove xq-compose.yml so down command fails
+      const composeFile = path.join(process.cwd(), 'xq-compose.yml')
+      if (await fs.pathExists(composeFile)) {
+        await fs.remove(composeFile)
+      }
 
-      const result = await runCLI(['down', '-f', invalidComposePath])
+      const result = await runCLI(['down'])
 
       expect(result.code).toBe(4)
       expect(result.stderr).toContain('Failed to run down')
@@ -258,11 +266,10 @@ describe('Integration Tests', () => {
 
       await fs.writeFile(overridesPath, JSON.stringify(overrides, null, 2), 'utf8')
 
-      const outputPath = path.join(tempDir, 'override-compose.yml')
+      const outputPath = path.join(process.cwd(), 'xq-compose.yml')
       const result = await runCLI([
         'generate',
         '-f', testSpecPath,
-        '-o', outputPath,
         '--overrides', overridesPath
       ])
 

@@ -15,30 +15,31 @@ Decouple the single YAML configuration file into multiple service-specific files
 
 ## Task List
 
-### Phase 1: Core Service Loader
-- [ ] **Task 1**: Create `src/services/serviceLoader.js` module to scan and merge service files
+### Phase 1: Core Service Loader ✅
+- [x] **Task 1**: Create `src/services/serviceLoader.js` module to scan and merge service files
   - Create new module with class/functions
   - Export main API: `loadFromDirectory(dirPath)`
 
-- [ ] **Task 2**: Add directory scanning logic to find `*.service.yml` files
+- [x] **Task 2**: Add directory scanning logic to find `*.service.yml` files
   - Use `fs.readdir()` to scan directory
   - Filter for `*.service.yml` and `*.service.yaml` patterns
   - Return sorted list of service files
 
-- [ ] **Task 3**: Implement service file merging into unified spec format
+- [x] **Task 3**: Implement service file merging into unified spec format
   - Read each service file
   - Extract service name from filename or `name` field
   - Merge all services into format: `{ services: { ... } }`
   - Preserve all service properties (image, tag, ports, environment, etc.)
   - Handle dependency resolution
 
-- [ ] **Task 4**: Add support for optional `xq.config.yml` for global settings
+- [x] **Task 4**: Add support for optional `xq.config.yml` for global settings
   - Check for `xq.config.yml` in same directory
   - Load global settings: `portRange`, `dependencies` (centralized groups)
   - Merge with service specs
 
-**Files to create:**
-- `src/services/serviceLoader.js`
+**Files created:**
+- `src/services/serviceLoader.js` ✅
+- `tests/serviceLoader.test.js` ✅ (27 tests, all passing)
 
 ---
 
@@ -239,18 +240,25 @@ xq-infra down
 
 ## Progress Tracking
 
-**Status**: Not Started
-**Started**: TBD
-**Target Completion**: TBD
+**Status**: Phase 1 Complete ✅
+**Started**: 2025-10-06
+**Target Completion**: In Progress
 
 ### Completed Tasks
-None yet
+- ✅ **Phase 1** (Tasks 1-4): Core Service Loader
+  - Created `src/services/serviceLoader.js` module
+  - Implemented `loadFromDirectory()` API
+  - Added directory scanning for `*.service.yml` and `*.service.yaml` files
+  - Implemented service file merging into unified spec format
+  - Added support for optional `xq.config.yml` global settings
+  - Included dependency validation with circular dependency detection
+  - Created comprehensive unit tests (27 tests covering all functionality)
 
 ### In Progress
-None yet
+None
 
 ### Blocked
-None yet
+None
 
 ---
 
@@ -282,4 +290,26 @@ When continuing this work in future sessions:
 4. **Add notes**: Add any implementation notes or issues discovered below
 
 ### Implementation Notes
-_(Add notes here as you work)_
+
+**Phase 1 Implementation (2025-10-06)**
+- Created `serviceLoader.js` as a singleton module (similar to other services in the project)
+- Service name derivation: Prioritizes explicit `name` field, falls back to filename without `.service.yml` extension
+- Error handling includes:
+  - Directory existence validation
+  - Empty directory check
+  - YAML parsing errors with file context
+  - Duplicate service name detection
+  - Missing dependency detection
+  - Circular dependency detection using DFS algorithm
+- Global config supports both `.yml` and `.yaml` extensions
+- Service files are loaded in alphabetical order for consistency
+- The module returns spec format identical to current single-file format for seamless integration
+- **Test Coverage**: Created `tests/serviceLoader.test.js` with 27 tests covering:
+  - Directory loading and service merging (9 tests)
+  - Directory scanning for `.service.yml` and `.service.yaml` files (3 tests)
+  - Global config loading from `xq.config.yml` (4 tests)
+  - Service file merging with global config (2 tests)
+  - Service name derivation from filenames (3 tests)
+  - Dependency validation including circular dependency detection (5 tests)
+  - Integration scenario with complete todo-app setup (1 test)
+  - All 27 tests passing ✅
