@@ -133,16 +133,219 @@ describe('ComposeGenerator', () => {
       composeGenerator.cleanupTempFiles()
       expect(await fs.pathExists(composePath)).toBe(true)
     })
+
+    test('should generate compose from directory with multiple services', async () => {
+      const servicesDir = path.join(tempDir, 'multi-services')
+      await fs.ensureDir(servicesDir)
+
+      // Create service files
+      const postgresSpec = {
+        name: 'postgres',
+        image: 'postgres',
+        tag: 'latest',
+        environment: {
+          POSTGRES_DB: 'testdb',
+          POSTGRES_USER: 'testuser',
+          POSTGRES_PASSWORD: 'testpass'
+        },
+        ports: ['5432:5432']
+      }
+
+      const apiSpec = {
+        name: 'api-service',
+        image: 'node',
+        tag: '18-alpine',
+        port: 3000,
+        environment: {
+          DB_HOST: 'postgres'
+        },
+        depends_on: ['postgres']
+      }
+
+      await fs.writeFile(
+        path.join(servicesDir, 'postgres.service.yml'),
+        YAML.stringify(postgresSpec),
+        'utf8'
+      )
+      await fs.writeFile(
+        path.join(servicesDir, 'api.service.yml'),
+        YAML.stringify(apiSpec),
+        'utf8'
+      )
+
+      // Generate compose from directory
+      const composePath = await composeGenerator.generateCompose(servicesDir)
+
+      expect(composePath).toBe(path.join(process.cwd(), 'xq-compose.yml'))
+      expect(await fs.pathExists(composePath)).toBe(true)
+
+      const composeContent = await fs.readFile(composePath, 'utf8')
+      const compose = YAML.parse(composeContent)
+
+      expect(compose.version).toBe('3.8')
+      expect(compose.services).toHaveProperty('postgres')
+      expect(compose.services).toHaveProperty('api-service')
+      expect(compose.services).toHaveProperty('xq-gateway')
+      expect(compose.networks).toHaveProperty('xq-network')
+
+      // Verify service configurations
+      expect(compose.services['postgres'].image).toBe('postgres:latest')
+      expect(compose.services['api-service'].image).toBe('node:18-alpine')
+      expect(compose.services['api-service'].depends_on).toContain('postgres')
+    })
+
+    test('should generate compose from directory with global config', async () => {
+      const servicesDir = path.join(tempDir, 'services-with-global-config')
+      await fs.ensureDir(servicesDir)
+
+      // Create service file
+      const apiSpec = {
+        name: 'api-service',
+        image: 'node',
+        tag: '18-alpine',
+        port: 3000,
+        dependencyGroups: ['database']
+      }
+
+      await fs.writeFile(
+        path.join(servicesDir, 'api.service.yml'),
+        YAML.stringify(apiSpec),
+        'utf8'
+      )
+
+      const dbSpec = {
+        name: 'postgres',
+        image: 'postgres',
+        tag: 'latest',
+        ports: ['5432:5432']
+      }
+
+      await fs.writeFile(
+        path.join(servicesDir, 'postgres.service.yml'),
+        YAML.stringify(dbSpec),
+        'utf8'
+      )
+
+      // Create global config with dependencies
+      const globalConfig = {
+        portRange: {
+          start: 4000
+        },
+        dependencies: {
+          database: ['postgres']
+        }
+      }
+
+      await fs.writeFile(
+        path.join(servicesDir, 'xq.config.yml'),
+        YAML.stringify(globalConfig),
+        'utf8'
+      )
+
+      // Generate compose from directory
+      const composePath = await composeGenerator.generateCompose(servicesDir)
+
+      const composeContent = await fs.readFile(composePath, 'utf8')
+      const compose = YAML.parse(composeContent)
+
+      // Verify api-service has postgres dependency through centralized deps
+      expect(compose.services['api-service'].depends_on).toContain('postgres')
+
+      // Verify port assignment starts from global config
+      expect(compose.services['api-service'].ports[0]).toBe('4000:3000')
+    })
   })
 
   describe('readXQSpec', () => {
-    test('should read and parse valid YAML spec', async () => {
+    test('should read and parse valid YAML spec from file', async () => {
       const spec = await composeGenerator.readXQSpec(testSpecPath)
       expect(spec).toEqual(testSpec)
     })
 
-    test('should throw error for non-existent file', async () => {
-      const nonExistentPath = path.join(tempDir, 'non-existent.yaml')
+    test('should read and parse spec from directory', async () => {
+      const servicesDir = path.join(tempDir, 'services')
+      await fs.ensureDir(servicesDir)
+
+      // Create service files
+      const webServiceSpec = {
+        name: 'web-app',
+        image: 'nginx',
+        tag: '1.21',
+        ports: ['8080:80'],
+        environment: {
+          NODE_ENV: 'test'
+        }
+      }
+
+      const apiServiceSpec = {
+        name: 'api-service',
+        image: 'node',
+        tag: '18-alpine',
+        ports: ['3000:3000']
+      }
+
+      await fs.writeFile(
+        path.join(servicesDir, 'web-app.service.yml'),
+        YAML.stringify(webServiceSpec),
+        'utf8'
+      )
+      await fs.writeFile(
+        path.join(servicesDir, 'api-service.service.yml'),
+        YAML.stringify(apiServiceSpec),
+        'utf8'
+      )
+
+      const spec = await composeGenerator.readXQSpec(servicesDir)
+
+      expect(spec.services).toHaveProperty('web-app')
+      expect(spec.services).toHaveProperty('api-service')
+      expect(spec.services['web-app'].image).toBe('nginx')
+      expect(spec.services['api-service'].image).toBe('node')
+    })
+
+    test('should read directory with global config', async () => {
+      const servicesDir = path.join(tempDir, 'services-with-config')
+      await fs.ensureDir(servicesDir)
+
+      // Create service file
+      const apiServiceSpec = {
+        name: 'api-service',
+        image: 'node',
+        tag: '18-alpine',
+        port: 3000
+      }
+
+      await fs.writeFile(
+        path.join(servicesDir, 'api-service.service.yml'),
+        YAML.stringify(apiServiceSpec),
+        'utf8'
+      )
+
+      // Create global config
+      const globalConfig = {
+        portRange: {
+          start: 3001
+        },
+        dependencies: {
+          database: ['postgres']
+        }
+      }
+
+      await fs.writeFile(
+        path.join(servicesDir, 'xq.config.yml'),
+        YAML.stringify(globalConfig),
+        'utf8'
+      )
+
+      const spec = await composeGenerator.readXQSpec(servicesDir)
+
+      expect(spec.services).toHaveProperty('api-service')
+      expect(spec.portRange).toEqual({ start: 3001 })
+      expect(spec.dependencies).toEqual({ database: ['postgres'] })
+    })
+
+    test('should throw error for non-existent path', async () => {
+      const nonExistentPath = path.join(tempDir, 'non-existent')
       await expect(composeGenerator.readXQSpec(nonExistentPath))
         .rejects.toThrow('Failed to read XQ spec')
     })

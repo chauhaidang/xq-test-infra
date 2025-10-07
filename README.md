@@ -40,6 +40,7 @@ EOF
 ## 🎯 Features
 
 - **Simplified Commands**: No complex arguments - just `generate`, `up`, and `down`
+- **Multi-File Configuration**: Organize services in separate files for better maintainability
 - **On-Demand Log Viewing**: Flexible log viewing with service filtering and real-time following
 - **Built-in Gateway**: Nginx reverse proxy for unified service access
 - **Service Overrides**: JSON-based configuration overrides for different environments
@@ -53,6 +54,7 @@ EOF
 - [Installation](#installation)
 - [Commands](#commands)
 - [XQ Specification Format](#xq-specification-format)
+- [Multi-File Service Configuration](#multi-file-service-configuration)
 - [Log Viewing](#log-viewing)
 - [Service Overrides](#service-overrides)
 - [Gateway Configuration](#gateway-configuration)
@@ -100,7 +102,7 @@ Generate `xq-compose.yml` from an XQ specification.
 xq-infra generate [options]
 
 Options:
-  -f, --file <path>         Path to XQ YAML spec (required)
+  -f, --file <path>         Path to XQ YAML spec file or directory containing *.service.yml files (required)
   --no-gateway              Disable default gateway injection
   --keep-file               Keep generated compose file after run
   --overrides <path>        Path to JSON file with overrides
@@ -108,8 +110,11 @@ Options:
 
 **Examples:**
 ```bash
-# Basic generation (creates xq-compose.yml)
+# Basic generation from single file (creates xq-compose.yml)
 xq-infra generate -f services.yaml
+
+# Generate from directory with multiple service files
+xq-infra generate -f ./services
 
 # Without gateway
 xq-infra generate -f services.yaml --no-gateway
@@ -206,6 +211,115 @@ services:
     volumes:
       - "pgdata:/var/lib/postgresql/data"
 ```
+
+## 📁 Multi-File Service Configuration
+
+For better maintainability and organization, you can split your services into separate files instead of using a single YAML file.
+
+### Directory Structure
+
+```
+services/
+├── xq.config.yml              # Optional: Global configuration
+├── postgres.service.yml       # Database service
+├── api-service.service.yml    # API service
+└── web-service.service.yml    # Web service
+```
+
+### Service File Format
+
+Each service file contains a single service definition:
+
+```yaml
+# postgres.service.yml
+name: postgres                 # Service name (optional, defaults to filename)
+image: postgres
+tag: latest
+environment:
+  POSTGRES_DB: myapp
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: pass
+ports:
+  - "5432:5432"
+```
+
+```yaml
+# api-service.service.yml
+name: api-service
+image: node
+tag: 18-alpine
+port: 3000                     # Auto-assigned host port
+environment:
+  DB_HOST: postgres
+  DB_PORT: 5432
+depends_on:
+  - postgres
+```
+
+### Global Configuration File
+
+The optional `xq.config.yml` file contains shared settings:
+
+```yaml
+# xq.config.yml
+portRange:
+  start: 3001                  # Starting port for auto-assignment
+
+dependencies:                  # Centralized dependency groups
+  database:
+    - postgres
+  cache:
+    - redis
+```
+
+Services can reference dependency groups:
+
+```yaml
+# api-service.service.yml
+name: api-service
+image: node
+tag: 18-alpine
+port: 3000
+dependencyGroups:
+  - database                   # References xq.config.yml dependencies
+  - cache
+```
+
+### Usage
+
+Generate compose from directory:
+
+```bash
+# Generate from directory containing service files
+xq-infra generate -f ./services
+xq-infra up
+
+# Works the same as single-file approach
+xq-infra logs
+xq-infra down
+```
+
+### Benefits
+
+- **Modularity**: Each service in its own file
+- **Version Control**: Easier to track service-specific changes
+- **Scalability**: Simple to add/remove services
+- **Team Collaboration**: Reduced merge conflicts
+- **Reusability**: Share common services across projects
+
+### File Naming Convention
+
+- Service files: `<service-name>.service.yml` or `<service-name>.service.yaml`
+- Global config: `xq.config.yml` or `xq.config.yaml`
+- Service name defaults to filename without `.service.yml` extension
+
+### Complete Example
+
+See [examples/multi-service/](./examples/multi-service/) for a working example with:
+- PostgreSQL database
+- Node.js API service
+- Nginx web service
+- Global configuration
 
 ## 📊 Log Viewing
 
@@ -515,6 +629,63 @@ xq-infra generate -f base.yaml --overrides dev-overrides.json
 xq-infra up
 ```
 
+### Example 4: Multi-File Service Organization
+
+Directory structure:
+```
+my-project/services/
+├── xq.config.yml
+├── postgres.service.yml
+├── redis.service.yml
+├── api-service.service.yml
+└── web-service.service.yml
+```
+
+`services/xq.config.yml`:
+```yaml
+portRange:
+  start: 3001
+
+dependencies:
+  backend:
+    - postgres
+    - redis
+```
+
+`services/postgres.service.yml`:
+```yaml
+name: postgres
+image: postgres
+tag: "15"
+environment:
+  POSTGRES_DB: myapp
+  POSTGRES_USER: admin
+  POSTGRES_PASSWORD: secret
+ports:
+  - "5432:5432"
+```
+
+`services/api-service.service.yml`:
+```yaml
+name: api-service
+image: myapp/api
+tag: latest
+port: 3000
+environment:
+  NODE_ENV: production
+dependencyGroups:
+  - backend
+```
+
+```bash
+# Generate from directory
+xq-infra generate -f my-project/services
+xq-infra up
+
+# Access via gateway
+curl http://localhost:8080/api-service/health
+```
+
 ## 🧪 Todo App Example
 
 This repository includes a complete todo application example that demonstrates real-world usage:
@@ -556,6 +727,108 @@ curl -X POST http://localhost:3002/todos \  # Create todo
 ```
 
 For complete todo app documentation, see [todo-app/README.md](./todo-app/README.md).
+
+## 🔄 Migration Guide
+
+### Migrating from Single-File to Multi-File Configuration
+
+If you have an existing single-file XQ spec and want to split it into multiple service files:
+
+#### Step 1: Create Services Directory
+
+```bash
+mkdir services
+```
+
+#### Step 2: Split Services into Individual Files
+
+For each service in your original spec, create a separate `.service.yml` file:
+
+**Original `my-app.yaml`:**
+```yaml
+services:
+  postgres:
+    image: postgres
+    tag: latest
+    environment:
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+
+  api:
+    image: node
+    tag: 18-alpine
+    port: 3000
+    depends_on:
+      - postgres
+```
+
+**New structure:**
+
+`services/postgres.service.yml`:
+```yaml
+name: postgres
+image: postgres
+tag: latest
+environment:
+  POSTGRES_DB: mydb
+ports:
+  - "5432:5432"
+```
+
+`services/api.service.yml`:
+```yaml
+name: api
+image: node
+tag: 18-alpine
+port: 3000
+depends_on:
+  - postgres
+```
+
+#### Step 3: Extract Global Configuration (Optional)
+
+If you have shared settings like `portRange` or centralized `dependencies`, create `xq.config.yml`:
+
+```yaml
+# services/xq.config.yml
+portRange:
+  start: 3001
+
+dependencies:
+  database:
+    - postgres
+```
+
+#### Step 4: Update Your Commands
+
+```bash
+# Old command
+xq-infra generate -f my-app.yaml
+
+# New command
+xq-infra generate -f ./services
+
+# Everything else stays the same
+xq-infra up
+xq-infra logs
+xq-infra down
+```
+
+#### Benefits After Migration
+
+- ✅ Easier to manage individual services
+- ✅ Better for version control (smaller diffs)
+- ✅ Simpler to add/remove services
+- ✅ Reduced merge conflicts in team environments
+- ✅ Service files can be reused across projects
+
+#### Backward Compatibility
+
+**Important**: The single-file approach continues to work! You can:
+- Keep using your existing single-file specs
+- Gradually migrate services one at a time
+- Mix both approaches in different projects
 
 ## 🛠️ Troubleshooting
 

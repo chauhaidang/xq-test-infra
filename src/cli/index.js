@@ -11,7 +11,7 @@ module.exports = async function main() {
   program
     .command('generate')
     .description('Generate xq-compose.yml from xq spec')
-    .requiredOption('-f, --file <path>', 'Path to xq YAML spec')
+    .requiredOption('-f, --file <path>', 'Path to xq YAML spec file or directory containing *.service.yml files')
     .option('--no-gateway', 'Disable default gateway injection')
     .option('--keep-file', 'Keep generated compose file after run')
     .option('--overrides <path>', 'Path to JSON file with overrides')

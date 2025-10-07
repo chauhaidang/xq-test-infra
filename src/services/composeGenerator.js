@@ -4,6 +4,7 @@ const os = require('os')
 const { v4: uuidv4 } = require('uuid')
 const YAML = require('yaml')
 const gateway = require('./gateway')
+const serviceLoader = require('./serviceLoader')
 
 class ComposeGenerator {
   constructor() {
@@ -54,8 +55,25 @@ class ComposeGenerator {
 
   async readXQSpec(specPath) {
     try {
-      const content = await fs.readFile(specPath, 'utf8')
-      return YAML.parse(content)
+      // Check if path exists
+      const pathExists = await fs.pathExists(specPath)
+      if (!pathExists) {
+        throw new Error(`Path does not exist: ${specPath}`)
+      }
+
+      // Determine if path is a file or directory
+      const stat = await fs.stat(specPath)
+
+      if (stat.isDirectory()) {
+        // Load from directory using serviceLoader
+        return await serviceLoader.loadFromDirectory(specPath)
+      } else if (stat.isFile()) {
+        // Load from single file (backward compatible)
+        const content = await fs.readFile(specPath, 'utf8')
+        return YAML.parse(content)
+      } else {
+        throw new Error(`Invalid path type: ${specPath} (must be a file or directory)`)
+      }
     } catch (error) {
       throw new Error(`Failed to read XQ spec from ${specPath}: ${error.message}`)
     }
