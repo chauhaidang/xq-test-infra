@@ -40,14 +40,13 @@ EOF
 ## 🎯 Features
 
 - **Simplified Commands**: No complex arguments - just `generate`, `up`, and `down`
-- **Multi-File Configuration**: Organize services in separate files for better maintainability
+- **Multi-File Configuration**: Organize services in separate files for better maintainability ✨ NEW
 - **On-Demand Log Viewing**: Flexible log viewing with service filtering and real-time following
 - **Built-in Gateway**: Nginx reverse proxy for unified service access
 - **Service Overrides**: JSON-based configuration overrides for different environments
 - **Docker Integration**: Works with Docker Compose v2 and v1
 - **CI/CD Ready**: GitHub Actions integration examples
 - **Multi-stage Security**: Secure Docker builds with token management
-- **Next change**: see [TASKS](./TASKS.md)
 
 ## 📋 Table of Contents
 
@@ -706,6 +705,10 @@ This repository includes a complete todo application example that demonstrates r
 ```
 
 ### Quick Start with Todo App
+
+The todo-app now supports both single-file and multi-file configurations:
+
+#### Option 1: Single-File Configuration (Traditional)
 ```bash
 # Build the todo app images
 cd todo-app
@@ -717,14 +720,47 @@ cd ..
 ./bin/xq-infra.js up
 
 # Test the application
-curl http://localhost:3001/todos          # Get todos
-curl -X POST http://localhost:3002/todos \  # Create todo
+curl http://localhost:3002/todos          # Get todos (auto-assigned port)
+curl -X POST http://localhost:3003/todos \  # Create todo (auto-assigned port)
   -H "Content-Type: application/json" \
   -d '{"title": "Test", "priority": "high"}'
 
 # View logs
 ./bin/xq-infra.js logs
 ```
+
+#### Option 2: Multi-File Configuration (Recommended)
+```bash
+# Build the todo app images
+cd todo-app
+./build-all-services.sh --github-token YOUR_TOKEN
+
+# Generate from multi-file directory
+cd ..
+./bin/xq-infra.js generate -f todo-app/services
+./bin/xq-infra.js up
+
+# Services available at:
+# - postgres: localhost:5432
+# - todo-read-service: localhost:3002 (auto-assigned)
+# - todo-write-service: localhost:3003 (auto-assigned)
+# - Gateway: localhost:8080
+
+# Test via gateway
+curl http://localhost:8080/todo-read-service/todos
+curl -X POST http://localhost:8080/todo-write-service/todos \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Test", "priority": "high"}'
+
+# View logs
+./bin/xq-infra.js logs
+```
+
+The multi-file structure in `todo-app/services/` contains:
+- `postgres.service.yml` - Database configuration
+- `todo-read-service.service.yml` - Read service
+- `todo-write-service.service.yml` - Write service
+- `xq.config.yml` - Global settings (port range, dependencies)
 
 For complete todo app documentation, see [todo-app/README.md](./todo-app/README.md).
 
