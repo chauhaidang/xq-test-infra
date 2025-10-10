@@ -40,7 +40,8 @@ EOF
 ## 🎯 Features
 
 - **Simplified Commands**: No complex arguments - just `generate`, `up`, and `down`
-- **Multi-File Configuration**: Organize services in separate files for better maintainability ✨ NEW
+- **Intelligent Routing**: Route requests by HTTP method and path patterns ✨ NEW
+- **Multi-File Configuration**: Organize services in separate files for better maintainability
 - **On-Demand Log Viewing**: Flexible log viewing with service filtering and real-time following
 - **Built-in Gateway**: Nginx reverse proxy for unified service access
 - **Service Overrides**: JSON-based configuration overrides for different environments
@@ -394,20 +395,106 @@ xq-infra generate -f base-spec.yaml --overrides dev-overrides.json
 
 The CLI automatically adds an nginx gateway service that provides:
 - Single entry point for all services
-- Service routing via path prefixes
+- Intelligent routing based on HTTP methods and paths
+- Service routing via path prefixes (backward compatible)
 - Load balancing and health checking
 
 ### Gateway Features
-- **URL Pattern**: `http://localhost:8081/{service-name}/`
+- **Intelligent Routing**: Route requests by HTTP method and path patterns
+- **Service-Name Routing**: Backward compatible `/{service-name}/` routing
 - **Service Discovery**: Automatic upstream configuration
 - **Port Detection**: Extracts container ports from service definitions
 - **Health Checks**: Basic nginx proxy health checking
 
+### Intelligent Routing (NEW)
+
+Define route-based routing in service files to enable method and path-based request routing:
+
+```yaml
+# todo-read-service.service.yml
+name: todo-read-service
+image: todo-read-service
+tag: latest
+port: 3000
+routes:
+  - methods: [GET]
+    paths: ["/api/todos/*", "/health"]
+```
+
+```yaml
+# todo-write-service.service.yml
+name: todo-write-service
+image: todo-write-service
+tag: latest
+port: 3000
+routes:
+  - methods: [POST, PUT, DELETE]
+    paths: ["/api/todos/*"]
+```
+
+With intelligent routing configured:
+- `GET http://localhost:8080/api/todos` routes to `todo-read-service`
+- `POST http://localhost:8080/api/todos` routes to `todo-write-service`
+- `PUT/DELETE http://localhost:8080/api/todos/1` route to `todo-write-service`
+
+#### Benefits
+- E2E tests only need ONE gateway URL
+- Separation of read and write operations (CQRS pattern)
+- Method-based routing for microservices
+- Path pattern matching with wildcards
+
+#### Route Configuration
+
+```yaml
+routes:
+  - methods: [GET, POST]           # HTTP methods (optional, defaults to all)
+    paths:                         # Path patterns to match
+      - "/api/users"              # Exact path match
+      - "/api/users/*"            # Wildcard match
+      - "/health"                 # Health check endpoint
+```
+
+- **methods**: Array of HTTP methods (GET, POST, PUT, DELETE, PATCH). If omitted, all methods are matched
+- **paths**: Array of path patterns. Use `/*` suffix for wildcard matching
+- Multiple route blocks per service are supported
+- Routes are processed in order defined
+
+### Service-Name Routing (Backward Compatible)
+
+Traditional service-name based routing continues to work:
+
+```bash
+# Access services by name
+http://localhost:8080/todo-read-service/
+http://localhost:8080/todo-write-service/
+http://localhost:8080/database/
+```
+
 ### Gateway Access Examples
-If you have services named `api` and `web`:
-- API service: `http://localhost:8081/api/`
-- Web service: `http://localhost:8081/web/`
-- Direct nginx: `http://localhost:8081/`
+
+With intelligent routing:
+```bash
+# Unified API endpoint - routes by method and path
+curl http://localhost:8080/api/todos                    # GET -> read-service
+curl -X POST http://localhost:8080/api/todos            # POST -> write-service
+curl -X PUT http://localhost:8080/api/todos/1           # PUT -> write-service
+curl http://localhost:8080/health                       # GET -> read-service
+```
+
+Without intelligent routing (service-name routing):
+```bash
+# Traditional service-specific endpoints
+curl http://localhost:8080/api-service/
+curl http://localhost:8080/web-service/
+```
+
+### Routing Priority
+
+The gateway processes routes in this order:
+1. **Path-based routes** (higher priority) - Intelligent routing by method and path
+2. **Service-name routes** (fallback) - Traditional `/{service-name}/` routing
+
+This ensures backward compatibility while enabling intelligent routing for services that configure it.
 
 ### Disabling Gateway
 ```bash

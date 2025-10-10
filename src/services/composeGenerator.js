@@ -129,7 +129,7 @@ class ComposeGenerator {
 
     // Add gateway if enabled
     if (enableGateway && Object.keys(compose.services).length > 0) {
-      await this.addGateway(compose, keepFile)
+      await this.addGateway(compose, spec.services, keepFile)
     }
 
     return compose
@@ -197,10 +197,21 @@ class ComposeGenerator {
     return composeService
   }
 
-  async addGateway(compose, keepFile = false) {
+  async addGateway(compose, originalServices = {}, keepFile = false) {
     // Generate nginx config in project directory
+    // Pass both compose services (for ports) and original services (for routes)
     const nginxConfigPath = path.join(process.cwd(), 'nginx-gateway.conf')
-    await gateway.generateNginxConfig(compose.services, nginxConfigPath)
+
+    // Merge compose services with routes from original services
+    const servicesWithRoutes = {}
+    Object.entries(compose.services).forEach(([name, composeService]) => {
+      servicesWithRoutes[name] = {
+        ...composeService,
+        routes: originalServices[name]?.routes
+      }
+    })
+
+    await gateway.generateNginxConfig(servicesWithRoutes, nginxConfigPath)
 
     // Add to temp files for cleanup only if not keeping files
     if (!keepFile) {
