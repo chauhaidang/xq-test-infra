@@ -15,6 +15,8 @@ on:
       - 'todo-app/**'
       - 'bin/**'
       - '.github/workflows/e2e-tests.yml'
+  workflow_dispatch:
+
 
 env:
   # Gateway configuration (single entry point)
@@ -48,11 +50,6 @@ jobs:
       - name: Install xq-infra CLI dependencies
         run: npm ci
 
-      - name: Verify xq-infra installation
-        run: |
-          ./bin/xq-infra.js --version
-          ./bin/xq-infra.js --help
-
       # =============================================================
       # Build Docker Images: Setup Buildx and build services
       # =============================================================
@@ -79,7 +76,7 @@ jobs:
       - name: Generate docker-compose with xq-infra
         run: |
           echo "Generating docker-compose from multi-file configuration..."
-          ./bin/xq-infra.js generate -f todo-app/services
+          node ./bin/xq-infra.js generate -f todo-app/services
 
       - name: Display generated compose file
         run: |
@@ -89,7 +86,7 @@ jobs:
       - name: Start services with xq-infra
         run: |
           echo "Starting all services..."
-          ./bin/xq-infra.js up
+          node ./bin/xq-infra.js up
 
       - name: Wait for services to be ready
         run: |
@@ -152,7 +149,7 @@ jobs:
         if: failure()
         run: |
           echo "Capturing logs from all services..."
-          ./bin/xq-infra.js logs > service-logs.txt 2>&1 || true
+          node ./bin/xq-infra.js logs > service-logs.txt 2>&1 || true
           echo "Service logs captured to service-logs.txt"
 
       - name: Upload service logs
@@ -167,7 +164,7 @@ jobs:
         if: always()
         run: |
           echo "Stopping all services..."
-          ./bin/xq-infra.js down
+          node ./bin/xq-infra.js down
 
       - name: Verify all containers are stopped
         if: always()
