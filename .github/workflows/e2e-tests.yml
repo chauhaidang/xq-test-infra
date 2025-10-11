@@ -7,14 +7,12 @@ on:
       - 'src/**'
       - 'todo-app/**'
       - 'bin/**'
-      - '.github/workflows/e2e-tests.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'src/**'
       - 'todo-app/**'
       - 'bin/**'
-      - '.github/workflows/e2e-tests.yml'
   workflow_dispatch:
 
 
