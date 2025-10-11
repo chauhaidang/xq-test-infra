@@ -121,26 +121,13 @@ jobs:
           DB_NAME: ${{ env.DB_NAME }}
           DB_USER: ${{ env.DB_USER }}
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
-        run: npm test
+        run: npm run test:ci
 
-      - name: Generate test results markdown
-        id: test-results
-        if: always()
-        working-directory: todo-app/e2e-tests
-        run: |
-          # Make utility script executable
-          chmod +x utils/test-results-to-markdown.js
-
-          # Generate markdown from JSON results
-          MARKDOWN_OUTPUT=$(node utils/test-results-to-markdown.js test-results/results.json)
-
-          # Export to GitHub output using heredoc to handle multiline
-          echo "markdown<<EOF" >> $GITHUB_OUTPUT
-          echo "$MARKDOWN_OUTPUT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Also print to step summary for visibility in GitHub UI
-          echo "$MARKDOWN_OUTPUT" >> $GITHUB_STEP_SUMMARY
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          report_paths: 'todo-app/e2e-tests/junit.xml'
 
       # =============================================================
       # Cleanup and Logging: Capture logs on failure and cleanup

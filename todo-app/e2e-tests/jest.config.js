@@ -9,5 +9,5 @@ module.exports = {
   forceExit: true,
   clearMocks: true,
   // Output JSON results for CI/CD processing
-  reporters: [['github-actions', { silent: false }], 'summary'],
+  reporters: [ 'default', 'jest-junit' ]
 }
