@@ -7,7 +7,7 @@ class DatabaseConnection {
     this.isConnected = false
   }
 
-  async connect() {
+  async connect(maxRetries = 30, retryDelay = 1000) {
     if (this.isConnected) {
       return this.pool
     }
@@ -20,25 +20,50 @@ class DatabaseConnection {
       port: process.env.DB_PORT || 5432,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 5000,
     }
 
-    try {
-      this.pool = new Pool(config)
+    let lastError
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.pool = new Pool(config)
 
-      this.pool.on('error', (err) => {
-        logger.error('Unexpected error on idle client', err)
-      })
+        this.pool.on('error', (err) => {
+          logger.error('Unexpected error on idle client', err)
+        })
 
-      await this.pool.connect()
-      this.isConnected = true
-      logger.info('Database connected successfully')
+        // Test the connection
+        const client = await this.pool.connect()
+        client.release()
 
-      return this.pool
-    } catch (error) {
-      logger.error('Failed to connect to database:', error)
-      throw error
+        this.isConnected = true
+        logger.info(`Database connected successfully on attempt ${attempt}`)
+
+        return this.pool
+      } catch (error) {
+        lastError = error
+        logger.warn(`Database connection attempt ${attempt}/${maxRetries} failed: ${error.message}`)
+
+        // Clean up failed pool
+        if (this.pool) {
+          try {
+            await this.pool.end()
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          this.pool = null
+        }
+
+        if (attempt < maxRetries) {
+          const waitTime = retryDelay * Math.min(attempt, 5) // Cap exponential backoff at 5x
+          logger.info(`Retrying in ${waitTime}ms...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+        }
+      }
     }
+
+    logger.error('Failed to connect to database after all retries:', lastError)
+    throw lastError
   }
 
   async disconnect() {

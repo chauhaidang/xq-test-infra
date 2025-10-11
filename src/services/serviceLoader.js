@@ -123,6 +123,7 @@ class ServiceLoader {
       }
 
       // Remove 'name' field from service data (not needed in final spec)
+      // Keep 'routes' field if present for gateway routing
       const { name, ...serviceConfig } = serviceData
 
       // Add service to spec

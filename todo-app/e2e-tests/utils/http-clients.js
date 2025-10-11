@@ -1,17 +1,20 @@
 const axios = require('axios')
 
-// Read Service Client (port 3001)
+// Gateway URL - single entry point for all services
+const gatewayURL = process.env.GATEWAY_URL || 'http://localhost:8080'
+
+// Read Service Client - uses gateway with intelligent routing
 const readClient = axios.create({
-  baseURL: process.env.READ_SERVICE_URL || 'http://localhost:3001',
+  baseURL: gatewayURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
-// Write Service Client (port 3002)
+// Write Service Client - uses gateway with intelligent routing
 const writeClient = axios.create({
-  baseURL: process.env.WRITE_SERVICE_URL || 'http://localhost:3002',
+  baseURL: gatewayURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

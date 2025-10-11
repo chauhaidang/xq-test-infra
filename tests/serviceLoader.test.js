@@ -426,6 +426,106 @@ describe('ServiceLoader', () => {
     })
   })
 
+  describe('route parsing', () => {
+    test('should preserve routes field in service config', async () => {
+      const serviceWithRoutes = {
+        image: 'api-service',
+        tag: 'latest',
+        port: 3000,
+        routes: [
+          {
+            methods: ['GET'],
+            paths: ['/api/users', '/api/users/*']
+          },
+          {
+            methods: ['POST', 'PUT', 'DELETE'],
+            paths: ['/api/users']
+          }
+        ]
+      }
+
+      await fs.writeFile(
+        path.join(tempDir, 'api.service.yml'),
+        YAML.stringify(serviceWithRoutes),
+        'utf8'
+      )
+
+      const result = await serviceLoader.loadFromDirectory(tempDir)
+
+      expect(result.services.api).toHaveProperty('routes')
+      expect(result.services.api.routes).toHaveLength(2)
+      expect(result.services.api.routes[0].methods).toEqual(['GET'])
+      expect(result.services.api.routes[0].paths).toContain('/api/users')
+    })
+
+    test('should handle services with and without routes', async () => {
+      const serviceWithRoutes = {
+        image: 'api-service',
+        tag: 'latest',
+        port: 3000,
+        routes: [
+          {
+            methods: ['GET'],
+            paths: ['/api/data']
+          }
+        ]
+      }
+
+      const serviceWithoutRoutes = {
+        image: 'database',
+        tag: 'latest',
+        ports: ['5432:5432']
+      }
+
+      await fs.writeFile(
+        path.join(tempDir, 'api.service.yml'),
+        YAML.stringify(serviceWithRoutes),
+        'utf8'
+      )
+
+      await fs.writeFile(
+        path.join(tempDir, 'db.service.yml'),
+        YAML.stringify(serviceWithoutRoutes),
+        'utf8'
+      )
+
+      const result = await serviceLoader.loadFromDirectory(tempDir)
+
+      expect(result.services.api).toHaveProperty('routes')
+      expect(result.services.db).not.toHaveProperty('routes')
+    })
+
+    test('should preserve complex route configurations', async () => {
+      const complexRoutes = {
+        image: 'complex-service',
+        tag: 'latest',
+        port: 3000,
+        routes: [
+          {
+            methods: ['GET', 'POST'],
+            paths: ['/api/v1/todos', '/api/v1/todos/*', '/health']
+          },
+          {
+            methods: ['PUT', 'DELETE'],
+            paths: ['/api/v1/todos/*']
+          }
+        ]
+      }
+
+      await fs.writeFile(
+        path.join(tempDir, 'complex.service.yml'),
+        YAML.stringify(complexRoutes),
+        'utf8'
+      )
+
+      const result = await serviceLoader.loadFromDirectory(tempDir)
+
+      expect(result.services.complex.routes).toHaveLength(2)
+      expect(result.services.complex.routes[0].paths).toContain('/health')
+      expect(result.services.complex.routes[1].methods).toEqual(['PUT', 'DELETE'])
+    })
+  })
+
   describe('integration scenarios', () => {
     test('should handle complete todo-app scenario', async () => {
       // Create global config
