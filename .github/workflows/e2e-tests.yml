@@ -126,9 +126,7 @@ jobs:
         working-directory: todo-app/e2e-tests
         run: |
           echo "Converting JUnit XML to Markdown..."
-          node utils/test-results-to-markdown.js junit.xml > test-results.md
-          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
-          cat test-results.md >> $GITHUB_STEP_SUMMARY
+          node utils/test-results-to-markdown.js junit.xml >> $GITHUB_STEP_SUMMARY
 
       - name: Upload test results
         if: success() || failure()
