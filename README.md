@@ -530,7 +530,29 @@ export REGISTRY_PASSWORD="your-password"
 
 ## 🚀 GitHub Actions Integration
 
-### Basic Workflow
+### E2E Testing Workflow
+
+This repository includes a comprehensive E2E testing workflow that validates the entire test infrastructure:
+
+**Features:**
+- Automatic Docker image building with GitHub token authentication
+- Service orchestration using xq-infra CLI
+- Intelligent health check waiting with retry logic
+- Complete test execution with JUnit XML and markdown reporting
+- Automatic log capture on failure
+- Proper cleanup regardless of test outcome
+
+**Test Reporting:**
+- JUnit XML format for CI/CD integration
+- Custom markdown reports in GitHub Actions summary
+- Collapsible sections for passed tests (compact view)
+- Detailed stack traces for failures
+- Artifacts uploaded with 7-day retention
+
+See [`.github/workflows/e2e-tests.yml`](.github/workflows/e2e-tests.yml) for the complete implementation.
+
+### Basic Workflow Template
+
 ```yaml
 name: Test Infrastructure
 
@@ -580,6 +602,25 @@ jobs:
       if: always()
       run: ./bin/xq-infra.js down
 ```
+
+### Reliability Features
+
+The todo-app example demonstrates production-ready patterns for CI/CD:
+
+**Database Connection Resilience:**
+- Automatic retry with exponential backoff (30 attempts over ~2.5 minutes)
+- Graceful degradation instead of immediate crashes
+- Proper connection pool cleanup between retries
+
+**Service Health Checks:**
+- Docker Compose healthcheck integration
+- Services wait for dependencies to be healthy before starting
+- Gateway ensures backend services are ready before accepting traffic
+
+**Test Reporting:**
+- JUnit XML for machine-readable results
+- Markdown summaries in GitHub UI
+- Automatic artifact upload for historical analysis
 
 ## 📚 Examples
 

@@ -283,8 +283,30 @@ DB_PASSWORD: todopass
 - [x] Task 6: Implement "Run E2E Tests" job steps
 - [x] Task 7: Implement "Cleanup and Logging" job steps
 
+### Recently Completed (2025-10-12)
+- [x] **Task 7.1**: Fix database connectivity issues in CI environment
+  - Added retry logic with exponential backoff to database connection (30 retries max)
+  - Updated docker-compose with proper healthchecks for all services
+  - Fixed postgres init.sql volume mount path for CI compatibility
+  - Services now wait for dependencies to be healthy before starting
+  - Files modified: `todo-app/src/todo-services/shared/database.js`, `xq-compose.yml`
+
+- [x] **Task 7.2**: Implement JUnit XML test reporting
+  - Configured jest-junit reporter for E2E tests
+  - Fixed test setup to allow Jest reporters to run (removed process.exit())
+  - Added xml2js dependency for XML parsing
+  - Changed bail setting to false so all tests run and get reported
+  - Files modified: `todo-app/e2e-tests/jest.config.js`, `todo-app/e2e-tests/setup/test-setup.js`, `todo-app/e2e-tests/package.json`
+
+- [x] **Task 7.3**: Create custom markdown test report generator
+  - Updated test-results-to-markdown utility to parse JUnit XML instead of JSON
+  - Replaced GitHub action junit reporter with custom markdown conversion
+  - Added collapsible sections for passed tests to keep report compact
+  - Integrated markdown report into GitHub Actions summary ($GITHUB_STEP_SUMMARY)
+  - Files modified: `todo-app/e2e-tests/utils/test-results-to-markdown.js`, `.github/workflows/e2e-tests.yml`
+
 ### In Progress
-None - Phases 1 & 2 Complete, ready for Phase 3 (CI workflow update) or Phase 4 (testing)
+None - Phases 1 & 2 Complete + Reporting improvements complete, ready for Phase 3 or 4
 
 ### Blocked
 None
@@ -366,6 +388,55 @@ Created comprehensive E2E workflow file `.github/workflows/e2e-tests.yml` that i
 
 **Phase 1 - Helper Scripts (Already completed)**:
 - wait-for-services.sh was already created and is ready to use
+
+**Database Connectivity & Test Reporting Improvements (Completed 2025-10-12)**
+
+**Problem**: E2E tests were failing in CI with 502 errors due to:
+1. Services crashing immediately when database wasn't ready
+2. No JUnit XML test reports being generated (tests exited before reporters could run)
+3. Need for custom markdown test reports instead of external GitHub action
+
+**Solutions Implemented**:
+
+1. **Database Connection Retry Logic** (`todo-app/src/todo-services/shared/database.js`):
+   - Added retry mechanism with exponential backoff (max 30 retries, ~2.5 minutes)
+   - Increased connection timeout from 2s to 5s
+   - Clean up failed connection pools between retries
+   - Services now gracefully wait for postgres instead of crashing
+
+2. **Docker Compose Healthchecks** (`xq-compose.yml`):
+   - Added postgres healthcheck using `pg_isready` command
+   - Services use `depends_on` with `condition: service_healthy`
+   - Fixed init.sql volume mount path for CI compatibility
+   - Added healthchecks for read/write services and gateway
+   - Proper service startup orchestration ensures database is ready before services connect
+
+3. **JUnit XML Reporting** (`todo-app/e2e-tests/`):
+   - Configured `jest-junit` reporter in jest.config.js
+   - Fixed test-setup.js to throw errors instead of calling process.exit()
+   - Changed `bail: false` to run all tests even if some fail
+   - Added xml2js dependency for XML parsing
+   - Reports now generated at `junit.xml` with full test details
+
+4. **Custom Markdown Report Generator** (`todo-app/e2e-tests/utils/test-results-to-markdown.js`):
+   - Rewrote utility to parse JUnit XML instead of JSON
+   - Generates GitHub-flavored markdown with summary, suite breakdowns, and error details
+   - Collapsible `<details>` sections for passed tests (keeps report compact)
+   - Expanded failed test sections with stack traces
+   - Integrated into GitHub Actions workflow via $GITHUB_STEP_SUMMARY
+
+5. **Workflow Updates** (`.github/workflows/e2e-tests.yml`):
+   - Removed external `mikepenz/action-junit-report` action
+   - Added "Convert test results to markdown" step
+   - Test results visible directly in GitHub Actions summary tab
+   - Both XML and markdown uploaded as artifacts (7-day retention)
+
+**Benefits**:
+- ✅ Services reliably start in CI environment with proper database wait handling
+- ✅ Complete test reports generated even when tests fail
+- ✅ Test results visible directly in GitHub UI without external dependencies
+- ✅ Better debugging with collapsible sections and full error details
+- ✅ No external GitHub action dependencies for reporting
 
 **Next Steps**:
 - Phase 3 ready for CI workflow review and badge addition
