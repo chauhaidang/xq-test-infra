@@ -47,6 +47,8 @@ jobs:
 
       - name: Install xq-infra CLI dependencies
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
       # =============================================================
       # Build Docker Images: Setup Buildx and build services
