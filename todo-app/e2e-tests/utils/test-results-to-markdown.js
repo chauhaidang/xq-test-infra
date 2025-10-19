@@ -98,6 +98,7 @@ async function generateMarkdown(xmlContent) {
 
           // Clean up message and limit length
           const cleanMessage = message
+            // eslint-disable-next-line no-control-regex
             .replace(/\u001b\[.*?m/g, '') // Remove ANSI codes
             .trim()
             .split('\n')

@@ -92,22 +92,22 @@ function generatePathBasedLocations(routes) {
         if (services.length === 1) {
           locationBlock += `        if ($request_method = ${method}) {\n`
           locationBlock += `            proxy_pass http://${services[0]}_upstream;\n`
-          locationBlock += `        }\n`
+          locationBlock += '        }\n'
         } else {
           // Multiple services for same method - use first one (or implement load balancing)
           locationBlock += `        if ($request_method = ${method}) {\n`
           locationBlock += `            proxy_pass http://${services[0]}_upstream;\n`
-          locationBlock += `        }\n`
+          locationBlock += '        }\n'
         }
       }
     }
 
     // Add standard proxy headers
-    locationBlock += `        proxy_set_header Host $host;\n`
-    locationBlock += `        proxy_set_header X-Real-IP $remote_addr;\n`
-    locationBlock += `        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n`
-    locationBlock += `        proxy_set_header X-Forwarded-Proto $scheme;\n`
-    locationBlock += `    }`
+    locationBlock += '        proxy_set_header Host $host;\n'
+    locationBlock += '        proxy_set_header X-Real-IP $remote_addr;\n'
+    locationBlock += '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n'
+    locationBlock += '        proxy_set_header X-Forwarded-Proto $scheme;\n'
+    locationBlock += '    }'
 
     locationBlocks.push(locationBlock)
   }
@@ -140,7 +140,7 @@ function convertToNginxPath(path) {
 function generateServiceNameLocations(servicesMap) {
   const locations = []
 
-  for (const [name, svc] of Object.entries(servicesMap)) {
+  for (const [name, _] of Object.entries(servicesMap)) {
     if (name === 'xq-gateway') continue
 
     const location = `    location /${name}/ {\n        proxy_pass http://${name}_upstream/;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }`
