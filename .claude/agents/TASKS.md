@@ -451,6 +451,57 @@ Created comprehensive E2E workflow file `.github/workflows/e2e-tests.yml` that i
 - Updated TASKS.md progress tracking with current status
 - File permission change on bin/xq-infra.js (made executable with chmod +x)
 
+**Bug Fixes Completed (2025-10-20 Evening)**:
+
+**Problem**: 2 E2E tests failing with 400 Bad Request errors
+1. "should delete completed todos via Write Service and verify via Read Service" - failing at `DELETE /api/todos/completed`
+2. "should handle due date scenarios: Create with due date → Update due date → Verify" - failing when setting `due_date: null`
+
+**Root Causes Identified**:
+1. **Express Route Ordering Issue**: The parameterized route `/api/todos/:id` was defined BEFORE the specific route `/api/todos/completed`, causing Express to treat "completed" as an ID parameter and apply integer validation
+2. **Validation Rule Issue**: The validation rule `optional().isISO8601()` doesn't allow explicit `null` values - only skips validation when field is `undefined`
+3. **Nginx Gateway Regex Pattern Issue**: The wildcard pattern `~ ^\/api\/todos(\/|$)` didn't properly match paths like `/api/todos/completed` or `/api/todos/123`
+
+**Solutions Implemented**:
+
+1. **Fixed Express Route Ordering** (`todo-app/src/todo-services/write-service/src/app.js`):
+   - Moved specific routes (`/api/todos/bulk-status` and `/api/todos/completed`) BEFORE parameterized routes (`/api/todos/:id`)
+   - Added comments explaining the importance of route order
+   - Ensures specific routes are matched first before falling through to parameterized routes
+
+2. **Fixed Nullable due_date Validation** (`todo-app/src/todo-services/write-service/src/controllers/todoController.js`):
+   - Changed `body('due_date').optional().isISO8601()` to `body('due_date').optional({ nullable: true }).isISO8601()`
+   - Updated error message to reflect null is allowed
+   - Allows field to be `null`, `undefined`, or a valid ISO8601 date string
+
+3. **Fixed Nginx Gateway Regex Pattern** (`src/services/gateway.js`):
+   - Changed wildcard pattern from `~ ^\/api\/todos(\/|$)` to `~ ^\/api\/todos(\/.*)?$`
+   - Now properly matches:
+     - `/api/todos` (exact match)
+     - `/api/todos/` (with trailing slash)
+     - `/api/todos/123` (with ID)
+     - `/api/todos/completed` (with path segment)
+
+**Test Results After Fixes**:
+```
+Test Suites: 4 passed, 4 total
+Tests:       22 passed, 22 total (previously 2 failed, 20 passed)
+Duration:    8.35s
+```
+✅ **All 22 E2E tests now passing!**
+
+**Files Modified**:
+- `src/services/gateway.js` - Fixed wildcard regex pattern for nginx location blocks
+- `todo-app/src/todo-services/write-service/src/controllers/todoController.js` - Fixed nullable due_date validation
+- `todo-app/src/todo-services/write-service/src/app.js` - Fixed route ordering to prioritize specific routes
+
+**Impact**:
+- ✅ DELETE /api/todos/completed endpoint now works correctly
+- ✅ Clearing due_date by setting to null now works correctly
+- ✅ Gateway routing now properly matches all path patterns
+- ✅ Express route matching is more predictable and correct
+- ✅ All E2E tests pass reliably
+
 **Current State Summary**:
 - E2E workflow fully functional and tested
 - Database connection resilience implemented
@@ -458,9 +509,11 @@ Created comprehensive E2E workflow file `.github/workflows/e2e-tests.yml` that i
 - CI and E2E workflows both have badges in README
 - Documentation comprehensive and up-to-date
 - Todo-app example fully demonstrates xq-infra capabilities
+- **All 22 E2E tests passing (0 failures)**
 
 **Next Steps**:
 - Phase 3 ready for CI workflow review (badges already present, may just need verification)
 - Phase 4 ready for testing and validation (all prerequisites complete)
 - Phase 5 ready for documentation and optimization work
 - All core functionality complete and working
+- Consider adding these fixes to changelog/release notes
