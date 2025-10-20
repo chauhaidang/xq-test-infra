@@ -1,326 +1,351 @@
 # xq-infra Implementation Tasks
 
-## Current Feature: Multi-File Service Configuration
+---
+
+## Current Feature: GitHub Actions E2E Testing Workflow
 
 ### Overview
-Decouple the single YAML configuration file into multiple service-specific files to improve maintainability and scalability.
+Implement comprehensive GitHub Actions workflow to automate E2E testing of todo-app using xq-infra CLI.
 
-**Goal**: Allow `xq-infra` CLI to scan a directory containing multiple service files and generate a single docker-compose file.
+**Goal**: Automate the entire test lifecycle - build Docker images, deploy with xq-infra, run E2E tests, and cleanup.
 
-**Current State**: Single YAML file (e.g., `todo-system.yml`) contains all services + centralized dependencies
+**Current State**: Basic CI workflow exists (`.github/workflows/ci.yml`) that only tests the CLI tool (unit tests, linting)
 
-**Target State**: Each service in its own file (e.g., `postgres.service.yml`, `todo-read-service.service.yml`)
+**Target State**: Complete E2E workflow that validates both xq-infra CLI and todo-app example in real-world usage
 
 ---
 
 ## Task List
 
-### Phase 1: Core Service Loader ✅
-- [x] **Task 1**: Create `src/services/serviceLoader.js` module to scan and merge service files
-  - Create new module with class/functions
-  - Export main API: `loadFromDirectory(dirPath)`
+### Phase 1: Helper Scripts
+Create supporting scripts needed by the workflow.
 
-- [x] **Task 2**: Add directory scanning logic to find `*.service.yml` files
-  - Use `fs.readdir()` to scan directory
-  - Filter for `*.service.yml` and `*.service.yaml` patterns
-  - Return sorted list of service files
-
-- [x] **Task 3**: Implement service file merging into unified spec format
-  - Read each service file
-  - Extract service name from filename or `name` field
-  - Merge all services into format: `{ services: { ... } }`
-  - Preserve all service properties (image, tag, ports, environment, etc.)
-  - Handle dependency resolution
-
-- [x] **Task 4**: Add support for optional `xq.config.yml` for global settings
-  - Check for `xq.config.yml` in same directory
-  - Load global settings: `portRange`, `dependencies` (centralized groups)
-  - Merge with service specs
-
-**Files created:**
-- `src/services/serviceLoader.js` ✅
-- `tests/serviceLoader.test.js` ✅ (27 tests, all passing)
-
----
-
-### Phase 2: Compose Generator Updates ✅
-- [x] **Task 5**: Update `composeGenerator.js` to support directory input
-  - Import `serviceLoader` module
-  - Add logic to handle directory input in addition to file input
-
-- [x] **Task 6**: Modify `readXQSpec()` to detect file vs directory path
-  - Use `fs.stat()` to detect if path is file or directory
-  - If directory: call `serviceLoader.loadFromDirectory()`
-  - If file: use existing logic (backward compatible)
-  - Return unified spec format in both cases
-
-**Files modified:**
-- `src/services/composeGenerator.js` ✅ (added serviceLoader import, updated readXQSpec method)
-- `tests/composeGenerator.test.js` ✅ (added 4 new tests for directory support)
-
----
-
-### Phase 3: CLI Integration ✅
-- [x] **Task 7**: Update CLI to accept directory input
-  - Updated `-f, --file` option to accept both file and directory (auto-detect approach)
-  - Updated option description to reflect directory support
-
-- [x] **Task 8**: Add auto-detection in CLI for file vs directory input
-  - Auto-detection handled by `composeGenerator.readXQSpec()` method
-  - No changes needed in CLI action handler (works transparently)
-  - Backward compatibility confirmed with existing file inputs
-
-**Files modified:**
-- `src/cli/index.js` ✅ (updated generate command description)
-
-**Example files created:**
-- `examples/multi-service/postgres.service.yml` ✅
-- `examples/multi-service/api-service.service.yml` ✅
-- `examples/multi-service/web-service.service.yml` ✅
-- `examples/multi-service/xq.config.yml` ✅
-
----
-
-### Phase 4: Testing
-- [x] **Task 9**: Create unit tests for `serviceLoader.js`
-  - Test directory scanning
-  - Test service file parsing
-  - Test service merging logic
-  - Test global config loading
-  - Test error handling (missing files, invalid YAML, circular deps)
-
-- [x] **Task 10**: Update `composeGenerator.test.js` with directory-based tests
-  - Add test cases for directory input
-  - Test directory with multiple service files
-  - Test directory with optional config file
-  - Verify generated compose matches expected format
-
-- [x] **Task 11**: Create example service files in `examples/` directory
-  - Create `examples/multi-service/` directory
-  - Add example service files:
-    - `postgres.service.yml`
-    - `api-service.service.yml`
-    - `web-service.service.yml`
-    - `xq.config.yml` (optional)
-
-- [x] **Task 12**: Split `todo-system.yml` into individual service files for testing
-  - Create `todo-app/services/` directory
-  - Split into files:
-    - `postgres.service.yml`
-    - `todo-read-service.service.yml`
-    - `todo-write-service.service.yml`
-    - `xq.config.yml` (with portRange and dependencies)
-
-- [x] **Task 13**: Test backward compatibility with existing single-file approach
-  - Run existing tests to ensure no regression
-  - Test CLI with existing YAML files
-  - Verify output is identical
-
-- [x] **Task 14**: Run integration tests with todo-app using new structure
-  - Use new directory-based approach with todo-app
-  - Test: `xq-infra generate -f todo-app/services`
-  - Verify generated `xq-compose.yml` is correct
-  - Test `xq-infra up` and `xq-infra down` work properly
+- [x] **Task 1**: Create wait-for-services health check script
+  - Create `todo-app/e2e-tests/setup/wait-for-services.sh`
+  - Implement timeout-based health check polling for gateway endpoint
+  - Check gateway at `http://localhost:8080` (or configured port)
+  - Verify services are accessible through gateway intelligent routing
+  - Add clear console output for debugging
+  - Make script executable (`chmod +x`)
+  - Test script locally with xq-infra
 
 **Files to create:**
-- `tests/serviceLoader.test.js`
-- `examples/multi-service/*.service.yml`
-- `todo-app/services/*.service.yml`
+- `todo-app/e2e-tests/setup/wait-for-services.sh`
+
+**Note**: E2E tests and build scripts are already properly configured:
+- Tests use single `GATEWAY_URL` (default: http://localhost:8080) via `utils/http-clients.js`
+- Gateway handles intelligent routing to read/write services based on HTTP methods
+- Database connection already uses environment variables with fallback defaults in `setup/db-connection.js`
+- Build scripts already support CI with `GITHUB_TOKEN` environment variable
+- Dockerfiles use secure multi-stage builds
+
+---
+
+### Phase 2: E2E Workflow Implementation
+Create the main GitHub Actions workflow file.
+
+- [x] **Task 2**: Create E2E workflow file structure
+  - Create `.github/workflows/e2e-tests.yml`
+  - Define workflow trigger conditions:
+    - Push to `main` branch
+    - Pull requests to `main` branch
+    - Path filters for relevant changes
+  - Set workflow-level environment variables
+  - Define timeout (20 minutes recommended)
+
+- [x] **Task 3**: Implement "Setup" job steps
+  - Add checkout step with `actions/checkout@v4`
+  - Add Node.js setup with `actions/setup-node@v4` (Node 20)
+  - Configure npm caching
+  - Install xq-infra CLI dependencies (`npm ci`)
+  - Add step to verify xq-infra installation
+
+- [x] **Task 4**: Implement "Build Docker Images" job steps
+  - Setup Docker Buildx with `docker/setup-buildx-action@v3`
+  - Configure Docker layer caching
+  - Build todo-app services using build scripts
+  - Pass `GITHUB_TOKEN` securely to build process
+  - Verify images are built successfully
+  - Optional: Add image scanning step
+
+- [x] **Task 5**: Implement "Deploy Test Environment" job steps
+  - Generate docker-compose using xq-infra:
+    - `./bin/xq-infra.js generate -f todo-app/services`
+  - Display generated compose file for debugging
+  - Start services with xq-infra:
+    - `./bin/xq-infra.js up`
+  - Wait for services to be ready using wait script
+  - Verify all containers are running
+
+- [x] **Task 6**: Implement "Run E2E Tests" job steps
+  - Set environment variables for E2E tests
+  - Install E2E test dependencies (`npm ci` in `todo-app/e2e-tests/`)
+  - Run E2E test suite (`npm test`)
+  - Generate test reports
+  - Upload test results as artifacts
+
+- [x] **Task 7**: Implement "Cleanup and Logging" job steps
+  - Add step to capture logs on failure:
+    - `./bin/xq-infra.js logs`
+  - Upload logs as artifacts (on failure)
+  - Add cleanup step (always runs):
+    - `./bin/xq-infra.js down`
+  - Verify all containers are stopped
+  - Optional: Clean up Docker images/volumes
+
+**Files to create:**
+- `.github/workflows/e2e-tests.yml`
+
+---
+
+### Phase 3: CI Workflow Update
+Update existing CI workflow and add badges.
+
+- [ ] **Task 8**: Review and update existing CI workflow
+  - Review `.github/workflows/ci.yml`
+  - Ensure it focuses on CLI tool unit tests only
+  - Keep it fast (< 3 minutes)
+  - Add clear job names and descriptions
+  - Test that both workflows don't conflict
+
+- [ ] **Task 9**: Add workflow badges to README
+  - Add E2E Tests badge to README
+  - Update existing CI badge if needed
+  - Position badges prominently at top of README
+  - Verify badges work correctly (may need to merge first)
 
 **Files to modify:**
-- `tests/composeGenerator.test.js`
+- `.github/workflows/ci.yml` (review/update)
+- `README.md` (add badges)
 
 ---
 
-### Phase 5: Documentation ✅
-- [x] **Task 15**: Update documentation and README with new usage examples
-  - Add new CLI usage examples to README
-  - Document service file schema
-  - Document `xq.config.yml` schema
-  - Add migration guide (single file → multi-file)
-  - Update examples section
+### Phase 4: Testing & Validation
+Test the workflow locally and verify it works in GitHub Actions.
 
-**Files modified:**
-- `README.md` ✅ (added comprehensive multi-file configuration documentation)
+- [ ] **Task 10**: Test workflow locally with act (optional)
+  - Install `act` tool for local GitHub Actions testing
+  - Run workflow locally: `act push`
+  - Debug any issues that arise
+  - Verify all steps complete successfully
+  - Note: Some features may not work identically to GitHub
 
----
+- [ ] **Task 11**: Test workflow in GitHub Actions
+  - Create feature branch
+  - Push branch to GitHub
+  - Verify workflow triggers correctly
+  - Monitor workflow execution
+  - Check all jobs complete successfully
+  - Review uploaded artifacts
+  - Verify logs are captured correctly
 
-## Service File Schema
+- [ ] **Task 12**: Test failure scenarios
+  - Intentionally break a test to verify failure handling
+  - Confirm logs are captured and uploaded
+  - Verify cleanup runs even on failure
+  - Test workflow cancellation handling
+  - Restore tests after verification
 
-### Individual Service File Format
-```yaml
-# postgres.service.yml
-name: postgres  # Optional, defaults to filename without .service.yml
-image: postgres
-tag: latest
-environment:
-  POSTGRES_DB: todoapp
-  POSTGRES_USER: todouser
-  POSTGRES_PASSWORD: todopass
-ports:
-  - "5432:5432"
-volumes:
-  - "./src/todo-services/database/init.sql:/docker-entrypoint-initdb.d/init.sql"
-```
-
-```yaml
-# todo-read-service.service.yml
-name: todo-read-service
-image: todo-read-service
-tag: latest
-port: 3000  # Container port - host port will be auto-assigned
-environment:
-  DB_HOST: postgres
-  DB_USER: todouser
-  DB_PASSWORD: todopass
-  DB_NAME: todoapp
-  DB_PORT: 5432
-  NODE_ENV: production
-  PORT: 3000
-depends_on:
-  - postgres
-```
-
-### Global Config File Format
-```yaml
-# xq.config.yml
-portRange:
-  start: 3001
-
-dependencies:
-  database:
-    - postgres
-```
+**Testing checklist:**
+- [ ] Workflow triggers on push to main
+- [ ] Workflow triggers on pull request
+- [ ] Docker images build successfully
+- [ ] xq-infra generates compose correctly
+- [ ] Services start and become healthy
+- [ ] E2E tests execute and pass
+- [ ] Logs captured on failure
+- [ ] Cleanup always runs
+- [ ] Artifacts uploaded correctly
 
 ---
 
-## CLI Usage
+### Phase 5: Documentation & Optimization
+Document the workflow and add optimizations.
 
-### Current Usage (Still Supported)
-```bash
-xq-infra generate -f todo-system.yml
-xq-infra up
-xq-infra down
+- [ ] **Task 13**: Document workflow in README
+  - Add "GitHub Actions Integration" section if not exists
+  - Document E2E workflow purpose and triggers
+  - Explain workflow stages and what they test
+  - Add troubleshooting guide for common issues
+  - Link to workflow file and badges
+
+- [ ] **Task 14**: Add workflow diagram (optional)
+  - Create visual diagram of workflow stages
+  - Show dependencies between jobs
+  - Include in README or docs
+
+- [ ] **Task 15**: Optimize workflow performance
+  - Review cache usage effectiveness
+  - Consider parallel job execution where possible
+  - Optimize Docker layer caching
+  - Review timeout values
+  - Measure and document workflow duration
+
+- [ ] **Task 16**: Add matrix testing (optional, future enhancement)
+  - Consider testing multiple Node.js versions (18, 20, 22)
+  - Consider testing different service configurations
+  - Add matrix strategy to workflow if beneficial
+
+**Files to modify:**
+- `README.md` (documentation)
+- `.github/workflows/e2e-tests.yml` (optimizations)
+
+---
+
+## Workflow Architecture
+
+### Single Comprehensive Workflow (Chosen Approach)
+
+```yaml
+E2E Tests Workflow (.github/workflows/e2e-tests.yml)
+├── Job: e2e-tests
+│   ├── Step 1: Checkout code
+│   ├── Step 2: Setup Node.js
+│   ├── Step 3: Install xq-infra CLI
+│   ├── Step 4: Setup Docker Buildx
+│   ├── Step 5: Build Docker images
+│   ├── Step 6: Generate compose with xq-infra
+│   ├── Step 7: Start services with xq-infra
+│   ├── Step 8: Wait for services (health checks)
+│   ├── Step 9: Run E2E tests
+│   ├── Step 10: Capture logs (on failure)
+│   └── Step 11: Cleanup (always)
 ```
 
-### New Usage (Directory-based)
-```bash
-# Option 1: Using -d flag
-xq-infra generate -d ./services
+### Environment Variables
 
-# Option 2: Auto-detect (if -f accepts directories)
-xq-infra generate -f ./services
+```yaml
+# E2E Test Configuration
+GATEWAY_URL: http://localhost:8080  # Single entry point (default in http-clients.js)
 
-# Then use existing commands
-xq-infra up
-xq-infra down
+# Database Configuration (for test setup/teardown)
+DB_HOST: localhost
+DB_PORT: 5432
+DB_NAME: todoapp
+DB_USER: todouser
+DB_PASSWORD: todopass
 ```
+
+**Note**: Tests use gateway intelligent routing - no need for separate service URLs.
+
+### Expected Timeline
+
+| Stage | Duration | Cacheable |
+|-------|----------|-----------|
+| Setup & Install | 30-60s | Yes (npm) |
+| Docker Build | 3-5min | Yes (layers) |
+| Service Startup | 30-60s | No |
+| E2E Tests | 2-3min | No |
+| Cleanup | 10-30s | No |
+| **Total** | **7-11min** | - |
 
 ---
 
 ## Implementation Notes
 
 ### Key Design Decisions
-1. **Service name derivation**: Use filename (`postgres.service.yml` → `postgres`) or explicit `name` field
-2. **File extension**: Use `.service.yml` to distinguish from other YAML files
-3. **Dependency resolution**: Direct service names in each file (e.g., `depends_on: [postgres]`)
-4. **Port conflicts**: Handled by existing auto-assignment logic in `composeGenerator.js`
-5. **Loading order**: Alphabetical by filename
-6. **Circular dependencies**: Detect and throw error during merge
+1. **Single workflow file**: All E2E testing in one workflow for simplicity
+2. **Multi-file config**: Use `todo-app/services/` directory (new approach)
+3. **Auto port assignment**: Let xq-infra assign ports (3002, 3003)
+4. **Health checks**: Wait script with timeout for service readiness
+5. **Cleanup strategy**: Always run cleanup, even on failure
+6. **Log capture**: Automatic log collection using `xq-infra logs` on failure
+7. **GitHub token**: Use `secrets.GITHUB_TOKEN` (automatically provided)
 
-### Backward Compatibility
-- All existing single-file commands must continue to work
-- No breaking changes to CLI interface
-- Generated compose output format remains identical
-- Existing tests must pass
+### Security Considerations
+- GitHub tokens only used in build stage (multi-stage Docker builds)
+- No secrets persisted in final Docker images
+- Tokens automatically scoped by GitHub Actions
+- Database credentials for test environment only (not production)
 
 ### Benefits
-- ✅ Each service isolated in own file
-- ✅ Easier version control for service-specific changes
-- ✅ Simpler to add/remove services
-- ✅ Better organization for large systems
-- ✅ Maintains all existing features (gateway, auto-port, centralized deps)
+- ✅ Validates xq-infra CLI in real-world scenario
+- ✅ Tests todo-app example application
+- ✅ Automates entire test lifecycle
+- ✅ Catches integration issues early
+- ✅ Provides confidence for releases
+- ✅ Documents workflow for contributors
 
 ---
 
 ## Progress Tracking
 
-**Status**: ALL PHASES COMPLETE ✅ 🎉
-**Started**: 2025-10-06
-**Last Updated**: 2025-10-09
+**Status**: PHASES 1-2 COMPLETE - Ready for Phase 3 or 4
+**Started**: 2025-10-11
+**Last Updated**: 2025-10-20
 
 ### Completed Tasks
-- ✅ **Phase 1** (Tasks 1-4): Core Service Loader
-  - Created `src/services/serviceLoader.js` module
-  - Implemented `loadFromDirectory()` API
-  - Added directory scanning for `*.service.yml` and `*.service.yaml` files
-  - Implemented service file merging into unified spec format
-  - Added support for optional `xq.config.yml` global settings
-  - Included dependency validation with circular dependency detection
-  - Created comprehensive unit tests (27 tests covering all functionality)
+- [x] Task 1: Create wait-for-services health check script
+- [x] Task 2: Create E2E workflow file structure
+- [x] Task 3: Implement "Setup" job steps
+- [x] Task 4: Implement "Build Docker Images" job steps
+- [x] Task 5: Implement "Deploy Test Environment" job steps
+- [x] Task 6: Implement "Run E2E Tests" job steps
+- [x] Task 7: Implement "Cleanup and Logging" job steps
 
-- ✅ **Phase 2** (Tasks 5-6, 10): Compose Generator Updates
-  - Updated `composeGenerator.js` to support directory input
-  - Imported `serviceLoader` module
-  - Modified `readXQSpec()` to detect file vs directory using `fs.stat()`
-  - Added directory loading via `serviceLoader.loadFromDirectory()`
-  - Maintained backward compatibility with single-file input
-  - Added 4 comprehensive tests for directory support
-  - All 74 tests passing (16 composeGenerator tests + 27 serviceLoader tests + others)
+### Recently Completed (2025-10-12)
+- [x] **Task 7.1**: Fix database connectivity issues in CI environment
+  - Added retry logic with exponential backoff to database connection (30 retries max)
+  - Updated docker-compose with proper healthchecks for all services
+  - Fixed postgres init.sql volume mount path for CI compatibility
+  - Services now wait for dependencies to be healthy before starting
+  - Files modified: `todo-app/src/todo-services/shared/database.js`, `xq-compose.yml`
 
-- ✅ **Phase 3** (Tasks 7-8, 11, 13): CLI Integration
-  - Updated `src/cli/index.js` to accept both files and directories
-  - Modified `-f, --file` option description to indicate directory support
-  - Auto-detection handled transparently by `composeGenerator.readXQSpec()`
-  - Created example multi-service directory in `examples/multi-service/`
-  - Tested CLI with both directory and file inputs
-  - Confirmed backward compatibility with existing YAML files
-  - All 74 tests continue to pass
+- [x] **Task 7.2**: Implement JUnit XML test reporting
+  - Configured jest-junit reporter for E2E tests
+  - Fixed test setup to allow Jest reporters to run (removed process.exit())
+  - Added xml2js dependency for XML parsing
+  - Changed bail setting to false so all tests run and get reported
+  - Files modified: `todo-app/e2e-tests/jest.config.js`, `todo-app/e2e-tests/setup/test-setup.js`, `todo-app/e2e-tests/package.json`
 
-- ✅ **Phase 4** (Tasks 9, 12, 14): Testing & Integration
-  - Created comprehensive unit tests for `serviceLoader.js` (27 tests)
-  - Split `todo-system.yml` into individual service files in `todo-app/services/`
-  - Created real-world example with todo-app services
-  - Tested CLI with directory-based approach
-  - Verified generated compose file correctness
-  - Tested `xq-infra up` and `xq-infra down` commands
-  - All 74 tests passing with no regressions
-
-- ✅ **Phase 5** (Task 15): Documentation
-  - Added comprehensive "Multi-File Service Configuration" section to README
-  - Updated CLI usage examples with directory support
-  - Documented service file schema and naming conventions
-  - Documented global `xq.config.yml` configuration file
-  - Added complete migration guide (single-file → multi-file)
-  - Added Example 4 showing multi-file service organization
-  - Updated features list and table of contents
-
-### Remaining Tasks
-None - All tasks completed! ✅
+- [x] **Task 7.3**: Create custom markdown test report generator
+  - Updated test-results-to-markdown utility to parse JUnit XML instead of JSON
+  - Replaced GitHub action junit reporter with custom markdown conversion
+  - Added collapsible sections for passed tests to keep report compact
+  - Integrated markdown report into GitHub Actions summary ($GITHUB_STEP_SUMMARY)
+  - Files modified: `todo-app/e2e-tests/utils/test-results-to-markdown.js`, `.github/workflows/e2e-tests.yml`
 
 ### In Progress
-None
+None - All work through Phase 2 and reporting improvements are complete
 
 ### Blocked
 None
+
+### Next Steps (Recommendations)
+Based on current state, recommended next actions:
+
+1. **Phase 3: CI Workflow Review** - Review and potentially update CI workflow badges (both badges are already in README, may just need verification)
+2. **Phase 4: Testing & Validation** - Test the E2E workflow in various scenarios including failure cases
+3. **Phase 5: Documentation & Optimization** - Further documentation improvements and performance optimization
+4. **Alternative: Feature Enhancement** - Consider new features like matrix testing, additional service types, or advanced routing capabilities
 
 ---
 
 ## Related Files Reference
 
-**Core Files:**
-- `src/services/composeGenerator.js` - Main compose generation logic
-- `src/cli/index.js` - CLI command definitions
-- `src/services/gateway.js` - Gateway nginx config generation
+**Workflow Files:**
+- `.github/workflows/ci.yml` - Existing CLI unit tests
+- `.github/workflows/e2e-tests.yml` - NEW E2E workflow (to be created)
 
-**Test Files:**
-- `tests/composeGenerator.test.js` - Existing generator tests
-- `tests/integration.test.js` - Integration tests
+**Helper Scripts:**
+- `todo-app/e2e-tests/setup/wait-for-services.sh` - NEW health check script (to be created)
+- `todo-app/build-all-services.sh` - Build script for Docker images
 
-**Example Files:**
-- `examples/basic-web-app.yaml`
-- `examples/microservices.yaml`
-- `todo-app/todo-system.yml` - Real-world example to split
+**E2E Tests:**
+- `todo-app/e2e-tests/tests/` - E2E test suite
+- `todo-app/e2e-tests/setup/test-setup.js` - Test setup/teardown
+- `todo-app/e2e-tests/package.json` - E2E test dependencies
+
+**Service Configuration:**
+- `todo-app/services/` - Multi-file service configs (used by workflow)
+- `todo-app/services/postgres.service.yml`
+- `todo-app/services/todo-read-service.service.yml`
+- `todo-app/services/todo-write-service.service.yml`
+- `todo-app/services/xq.config.yml`
+
+**Docker Files:**
+- `todo-app/src/todo-services/read-service/Dockerfile`
+- `todo-app/src/todo-services/write-service/Dockerfile`
 
 ---
 
@@ -335,93 +360,160 @@ When continuing this work in future sessions:
 
 ### Implementation Notes
 
-**Phase 4 Implementation (2025-10-09)**
-- Split `todo-system.yml` into individual service files:
-  - Created `todo-app/services/postgres.service.yml` - Database service
-  - Created `todo-app/services/todo-read-service.service.yml` - Read API service
-  - Created `todo-app/services/todo-write-service.service.yml` - Write API service
-  - Created `todo-app/services/xq.config.yml` - Global config with portRange and centralized dependencies
-- Integration testing results:
-  - ✅ Generate from directory: `node bin/xq-infra.js generate -f todo-app/services` - Success
-  - ✅ Generated compose file verified:
-    - All 3 services present (postgres, todo-read-service, todo-write-service)
-    - Port auto-assignment working (3002 for read, 3003 for write)
-    - Dependencies resolved correctly (both services depend on postgres)
-    - Gateway created with all services
-    - All environment variables preserved
-  - ✅ CLI up command: `node bin/xq-infra.js up` - Works correctly
-  - ✅ CLI down command: `node bin/xq-infra.js down` - Works correctly
-  - ✅ All 74 tests passing with no regressions
-- Real-world validation complete with actual todo-app structure
+**Phase 2 - E2E Workflow Implementation (Completed 2025-10-11)**
 
-**Phase 5 Implementation (2025-10-07)**
-- Updated `README.md` with comprehensive multi-file configuration documentation
-- Added new section "Multi-File Service Configuration" with:
-  - Directory structure overview
-  - Service file format examples
-  - Global configuration file (`xq.config.yml`) documentation
-  - Usage instructions and benefits
-  - File naming conventions
-  - Complete working example reference
-- Updated "Generate Command" section with directory support in options
-- Added Example 4: Multi-File Service Organization showing real-world usage
-- Added complete "Migration Guide" section with:
-  - Step-by-step migration instructions
-  - Before/after code examples
-  - Benefits of migration
-  - Backward compatibility notes
-- Updated "Features" list to include "Multi-File Configuration"
-- Updated Table of Contents with new sections
-- Documentation is now complete and ready for users
+Created comprehensive E2E workflow file `.github/workflows/e2e-tests.yml` that includes:
 
-**Phase 3 Implementation (2025-10-07)**
-- Updated CLI `generate` command option description in `src/cli/index.js`
-- Changed `-f, --file` description to: "Path to xq YAML spec file or directory containing *.service.yml files"
-- No logic changes needed in CLI handler - auto-detection works transparently through `composeGenerator.readXQSpec()`
-- Created comprehensive example directory `examples/multi-service/` with:
-  - `postgres.service.yml` - Database service
-  - `api-service.service.yml` - Node.js API service with DB dependency
-  - `web-service.service.yml` - Nginx web service with API dependency
-  - `xq.config.yml` - Global config with portRange and centralized dependencies
-- CLI testing results:
-  - ✅ Directory input: `node bin/xq-infra.js generate -f examples/multi-service` - Success
-  - ✅ File input: `node bin/xq-infra.js generate -f examples/basic-web-app.yaml` - Success (backward compatible)
-  - ✅ Help text: `node bin/xq-infra.js generate --help` - Shows updated description
-- All 74 tests continue to pass with no regressions
+1. **Workflow Triggers**:
+   - Push to main branch
+   - Pull requests to main branch
+   - Path filters for relevant code changes (src/, todo-app/, bin/, workflow file)
 
-**Phase 2 Implementation (2025-10-07)**
-- Updated `composeGenerator.readXQSpec()` to support both file and directory inputs
-- Added path existence validation and type detection using `fs.stat()`
-- Directory paths automatically route through `serviceLoader.loadFromDirectory()`
-- File paths continue to use existing YAML file parsing (backward compatible)
-- Enhanced error messages to provide clear feedback on path issues
-- Added 4 new test cases:
-  1. `should read and parse spec from directory` - Basic directory loading
-  2. `should read directory with global config` - Directory with xq.config.yml
-  3. `should generate compose from directory with multiple services` - End-to-end compose generation from directory
-  4. `should generate compose from directory with global config` - Complete integration with centralized dependencies and port ranges
-- All existing tests continue to pass, confirming backward compatibility
-- Test coverage for `composeGenerator.js` increased to 91.81% statements
+2. **Environment Variables**:
+   - Single GATEWAY_URL entry point (http://localhost:8080)
+   - Database configuration for test setup/teardown
+   - All environment variables properly defined at workflow level
 
-**Phase 1 Implementation (2025-10-06)**
-- Created `serviceLoader.js` as a singleton module (similar to other services in the project)
-- Service name derivation: Prioritizes explicit `name` field, falls back to filename without `.service.yml` extension
-- Error handling includes:
-  - Directory existence validation
-  - Empty directory check
-  - YAML parsing errors with file context
-  - Duplicate service name detection
-  - Missing dependency detection
-  - Circular dependency detection using DFS algorithm
-- Global config supports both `.yml` and `.yaml` extensions
-- Service files are loaded in alphabetical order for consistency
-- The module returns spec format identical to current single-file format for seamless integration
-- **Test Coverage**: Created `tests/serviceLoader.test.js` with 27 tests covering:
-  - Directory loading and service merging (9 tests)
-  - Directory scanning for `.service.yml` and `.service.yaml` files (3 tests)
-  - Global config loading from `xq.config.yml` (4 tests)
-  - Service file merging with global config (2 tests)
-  - Service name derivation from filenames (3 tests)
-  - Dependency validation including circular dependency detection (5 tests)
-  - Integration scenario with complete todo-app setup (1 test)
-  - All 27 tests passing ✅
+3. **Job Structure** (single comprehensive job with 20-minute timeout):
+   - Setup: Checkout, Node.js 20, npm cache, xq-infra installation and verification
+   - Build: Docker Buildx setup, image building with GITHUB_TOKEN, image verification
+   - Deploy: Compose generation, service startup, health check waiting, container verification
+   - Test: E2E test dependency installation, test execution with proper env vars, test result upload
+   - Cleanup: Log capture on failure, log upload, service cleanup (always runs), container verification
+
+4. **Key Features**:
+   - Uses multi-file service configuration (`todo-app/services/`)
+   - Implements health check waiting with wait-for-services.sh script
+   - Captures and uploads logs only on failure
+   - Always runs cleanup step regardless of job outcome
+   - Uploads test results as artifacts with 7-day retention
+   - Comprehensive container status verification at each stage
+
+5. **Security**:
+   - GitHub token passed securely to build process only
+   - No secrets persisted in final Docker images
+   - Uses GitHub's automatic GITHUB_TOKEN secret
+
+**Phase 1 - Helper Scripts (Already completed)**:
+- wait-for-services.sh was already created and is ready to use
+
+**Database Connectivity & Test Reporting Improvements (Completed 2025-10-12)**
+
+**Problem**: E2E tests were failing in CI with 502 errors due to:
+1. Services crashing immediately when database wasn't ready
+2. No JUnit XML test reports being generated (tests exited before reporters could run)
+3. Need for custom markdown test reports instead of external GitHub action
+
+**Solutions Implemented**:
+
+1. **Database Connection Retry Logic** (`todo-app/src/todo-services/shared/database.js`):
+   - Added retry mechanism with exponential backoff (max 30 retries, ~2.5 minutes)
+   - Increased connection timeout from 2s to 5s
+   - Clean up failed connection pools between retries
+   - Services now gracefully wait for postgres instead of crashing
+
+2. **Docker Compose Healthchecks** (`xq-compose.yml`):
+   - Added postgres healthcheck using `pg_isready` command
+   - Services use `depends_on` with `condition: service_healthy`
+   - Fixed init.sql volume mount path for CI compatibility
+   - Added healthchecks for read/write services and gateway
+   - Proper service startup orchestration ensures database is ready before services connect
+
+3. **JUnit XML Reporting** (`todo-app/e2e-tests/`):
+   - Configured `jest-junit` reporter in jest.config.js
+   - Fixed test-setup.js to throw errors instead of calling process.exit()
+   - Changed `bail: false` to run all tests even if some fail
+   - Added xml2js dependency for XML parsing
+   - Reports now generated at `junit.xml` with full test details
+
+4. **Custom Markdown Report Generator** (`todo-app/e2e-tests/utils/test-results-to-markdown.js`):
+   - Rewrote utility to parse JUnit XML instead of JSON
+   - Generates GitHub-flavored markdown with summary, suite breakdowns, and error details
+   - Collapsible `<details>` sections for passed tests (keeps report compact)
+   - Expanded failed test sections with stack traces
+   - Integrated into GitHub Actions workflow via $GITHUB_STEP_SUMMARY
+
+5. **Workflow Updates** (`.github/workflows/e2e-tests.yml`):
+   - Removed external `mikepenz/action-junit-report` action
+   - Added "Convert test results to markdown" step
+   - Test results visible directly in GitHub Actions summary tab
+   - Both XML and markdown uploaded as artifacts (7-day retention)
+
+**Benefits**:
+- ✅ Services reliably start in CI environment with proper database wait handling
+- ✅ Complete test reports generated even when tests fail
+- ✅ Test results visible directly in GitHub UI without external dependencies
+- ✅ Better debugging with collapsible sections and full error details
+- ✅ No external GitHub action dependencies for reporting
+
+**Recent Minor Updates (2025-10-20)**:
+- Updated README.md version section from 0.0.2 to 0.1.0 with comprehensive feature list
+- Updated TASKS.md progress tracking with current status
+- File permission change on bin/xq-infra.js (made executable with chmod +x)
+
+**Bug Fixes Completed (2025-10-20 Evening)**:
+
+**Problem**: 2 E2E tests failing with 400 Bad Request errors
+1. "should delete completed todos via Write Service and verify via Read Service" - failing at `DELETE /api/todos/completed`
+2. "should handle due date scenarios: Create with due date → Update due date → Verify" - failing when setting `due_date: null`
+
+**Root Causes Identified**:
+1. **Express Route Ordering Issue**: The parameterized route `/api/todos/:id` was defined BEFORE the specific route `/api/todos/completed`, causing Express to treat "completed" as an ID parameter and apply integer validation
+2. **Validation Rule Issue**: The validation rule `optional().isISO8601()` doesn't allow explicit `null` values - only skips validation when field is `undefined`
+3. **Nginx Gateway Regex Pattern Issue**: The wildcard pattern `~ ^\/api\/todos(\/|$)` didn't properly match paths like `/api/todos/completed` or `/api/todos/123`
+
+**Solutions Implemented**:
+
+1. **Fixed Express Route Ordering** (`todo-app/src/todo-services/write-service/src/app.js`):
+   - Moved specific routes (`/api/todos/bulk-status` and `/api/todos/completed`) BEFORE parameterized routes (`/api/todos/:id`)
+   - Added comments explaining the importance of route order
+   - Ensures specific routes are matched first before falling through to parameterized routes
+
+2. **Fixed Nullable due_date Validation** (`todo-app/src/todo-services/write-service/src/controllers/todoController.js`):
+   - Changed `body('due_date').optional().isISO8601()` to `body('due_date').optional({ nullable: true }).isISO8601()`
+   - Updated error message to reflect null is allowed
+   - Allows field to be `null`, `undefined`, or a valid ISO8601 date string
+
+3. **Fixed Nginx Gateway Regex Pattern** (`src/services/gateway.js`):
+   - Changed wildcard pattern from `~ ^\/api\/todos(\/|$)` to `~ ^\/api\/todos(\/.*)?$`
+   - Now properly matches:
+     - `/api/todos` (exact match)
+     - `/api/todos/` (with trailing slash)
+     - `/api/todos/123` (with ID)
+     - `/api/todos/completed` (with path segment)
+
+**Test Results After Fixes**:
+```
+Test Suites: 4 passed, 4 total
+Tests:       22 passed, 22 total (previously 2 failed, 20 passed)
+Duration:    8.35s
+```
+✅ **All 22 E2E tests now passing!**
+
+**Files Modified**:
+- `src/services/gateway.js` - Fixed wildcard regex pattern for nginx location blocks
+- `todo-app/src/todo-services/write-service/src/controllers/todoController.js` - Fixed nullable due_date validation
+- `todo-app/src/todo-services/write-service/src/app.js` - Fixed route ordering to prioritize specific routes
+
+**Impact**:
+- ✅ DELETE /api/todos/completed endpoint now works correctly
+- ✅ Clearing due_date by setting to null now works correctly
+- ✅ Gateway routing now properly matches all path patterns
+- ✅ Express route matching is more predictable and correct
+- ✅ All E2E tests pass reliably
+
+**Current State Summary**:
+- E2E workflow fully functional and tested
+- Database connection resilience implemented
+- Test reporting with JUnit XML and custom markdown working
+- CI and E2E workflows both have badges in README
+- Documentation comprehensive and up-to-date
+- Todo-app example fully demonstrates xq-infra capabilities
+- **All 22 E2E tests passing (0 failures)**
+
+**Next Steps**:
+- Phase 3 ready for CI workflow review (badges already present, may just need verification)
+- Phase 4 ready for testing and validation (all prerequisites complete)
+- Phase 5 ready for documentation and optimization work
+- All core functionality complete and working
+- Consider adding these fixes to changelog/release notes

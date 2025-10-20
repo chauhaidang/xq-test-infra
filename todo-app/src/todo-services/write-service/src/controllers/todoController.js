@@ -22,7 +22,7 @@ class TodoController {
         body('title').optional().isString().trim().isLength({ min: 1, max: 255 }).withMessage('Title must be 1-255 characters'),
         body('description').optional().isString().trim().isLength({ max: 1000 }).withMessage('Description must be a string up to 1000 characters'),
         body('priority').optional().isIn(['low', 'medium', 'high']).withMessage('Priority must be low, medium, or high'),
-        body('due_date').optional().isISO8601().withMessage('Due date must be a valid ISO 8601 date'),
+        body('due_date').optional({ nullable: true }).isISO8601().withMessage('Due date must be a valid ISO 8601 date or null'),
         body('completed').optional().isBoolean().withMessage('Completed must be a boolean')
       ],
       deleteTodo: [

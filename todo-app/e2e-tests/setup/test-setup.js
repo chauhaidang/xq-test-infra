@@ -105,7 +105,8 @@ beforeAll(async () => {
 
   } catch (error) {
     console.error('❌ E2E Test Setup Failed:', error.message)
-    process.exit(1)
+    // Don't use process.exit() - let Jest handle the error so reporters can run
+    throw error
   }
 })
 

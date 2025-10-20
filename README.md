@@ -3,7 +3,7 @@
 A simplified CLI tool for spinning up Docker-based test environments with automatic log capture and built-in gateway support.
 
 [![CI](https://github.com/chauhaidang/xq-test-infra/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chauhaidang/xq-test-infra/actions/workflows/ci.yml)
-
+[![E2E Tests](https://github.com/chauhaidang/xq-test-infra/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/chauhaidang/xq-test-infra/actions/workflows/e2e-tests.yml)
 ## 🚀 Quick Start
 
 ```bash
@@ -40,7 +40,8 @@ EOF
 ## 🎯 Features
 
 - **Simplified Commands**: No complex arguments - just `generate`, `up`, and `down`
-- **Multi-File Configuration**: Organize services in separate files for better maintainability ✨ NEW
+- **Intelligent Routing**: Route requests by HTTP method and path patterns ✨ NEW
+- **Multi-File Configuration**: Organize services in separate files for better maintainability
 - **On-Demand Log Viewing**: Flexible log viewing with service filtering and real-time following
 - **Built-in Gateway**: Nginx reverse proxy for unified service access
 - **Service Overrides**: JSON-based configuration overrides for different environments
@@ -394,20 +395,106 @@ xq-infra generate -f base-spec.yaml --overrides dev-overrides.json
 
 The CLI automatically adds an nginx gateway service that provides:
 - Single entry point for all services
-- Service routing via path prefixes
+- Intelligent routing based on HTTP methods and paths
+- Service routing via path prefixes (backward compatible)
 - Load balancing and health checking
 
 ### Gateway Features
-- **URL Pattern**: `http://localhost:8081/{service-name}/`
+- **Intelligent Routing**: Route requests by HTTP method and path patterns
+- **Service-Name Routing**: Backward compatible `/{service-name}/` routing
 - **Service Discovery**: Automatic upstream configuration
 - **Port Detection**: Extracts container ports from service definitions
 - **Health Checks**: Basic nginx proxy health checking
 
+### Intelligent Routing (NEW)
+
+Define route-based routing in service files to enable method and path-based request routing:
+
+```yaml
+# todo-read-service.service.yml
+name: todo-read-service
+image: todo-read-service
+tag: latest
+port: 3000
+routes:
+  - methods: [GET]
+    paths: ["/api/todos/*", "/health"]
+```
+
+```yaml
+# todo-write-service.service.yml
+name: todo-write-service
+image: todo-write-service
+tag: latest
+port: 3000
+routes:
+  - methods: [POST, PUT, DELETE]
+    paths: ["/api/todos/*"]
+```
+
+With intelligent routing configured:
+- `GET http://localhost:8080/api/todos` routes to `todo-read-service`
+- `POST http://localhost:8080/api/todos` routes to `todo-write-service`
+- `PUT/DELETE http://localhost:8080/api/todos/1` route to `todo-write-service`
+
+#### Benefits
+- E2E tests only need ONE gateway URL
+- Separation of read and write operations (CQRS pattern)
+- Method-based routing for microservices
+- Path pattern matching with wildcards
+
+#### Route Configuration
+
+```yaml
+routes:
+  - methods: [GET, POST]           # HTTP methods (optional, defaults to all)
+    paths:                         # Path patterns to match
+      - "/api/users"              # Exact path match
+      - "/api/users/*"            # Wildcard match
+      - "/health"                 # Health check endpoint
+```
+
+- **methods**: Array of HTTP methods (GET, POST, PUT, DELETE, PATCH). If omitted, all methods are matched
+- **paths**: Array of path patterns. Use `/*` suffix for wildcard matching
+- Multiple route blocks per service are supported
+- Routes are processed in order defined
+
+### Service-Name Routing (Backward Compatible)
+
+Traditional service-name based routing continues to work:
+
+```bash
+# Access services by name
+http://localhost:8080/todo-read-service/
+http://localhost:8080/todo-write-service/
+http://localhost:8080/database/
+```
+
 ### Gateway Access Examples
-If you have services named `api` and `web`:
-- API service: `http://localhost:8081/api/`
-- Web service: `http://localhost:8081/web/`
-- Direct nginx: `http://localhost:8081/`
+
+With intelligent routing:
+```bash
+# Unified API endpoint - routes by method and path
+curl http://localhost:8080/api/todos                    # GET -> read-service
+curl -X POST http://localhost:8080/api/todos            # POST -> write-service
+curl -X PUT http://localhost:8080/api/todos/1           # PUT -> write-service
+curl http://localhost:8080/health                       # GET -> read-service
+```
+
+Without intelligent routing (service-name routing):
+```bash
+# Traditional service-specific endpoints
+curl http://localhost:8080/api-service/
+curl http://localhost:8080/web-service/
+```
+
+### Routing Priority
+
+The gateway processes routes in this order:
+1. **Path-based routes** (higher priority) - Intelligent routing by method and path
+2. **Service-name routes** (fallback) - Traditional `/{service-name}/` routing
+
+This ensures backward compatibility while enabling intelligent routing for services that configure it.
 
 ### Disabling Gateway
 ```bash
@@ -443,7 +530,29 @@ export REGISTRY_PASSWORD="your-password"
 
 ## 🚀 GitHub Actions Integration
 
-### Basic Workflow
+### E2E Testing Workflow
+
+This repository includes a comprehensive E2E testing workflow that validates the entire test infrastructure:
+
+**Features:**
+- Automatic Docker image building with GitHub token authentication
+- Service orchestration using xq-infra CLI
+- Intelligent health check waiting with retry logic
+- Complete test execution with JUnit XML and markdown reporting
+- Automatic log capture on failure
+- Proper cleanup regardless of test outcome
+
+**Test Reporting:**
+- JUnit XML format for CI/CD integration
+- Custom markdown reports in GitHub Actions summary
+- Collapsible sections for passed tests (compact view)
+- Detailed stack traces for failures
+- Artifacts uploaded with 7-day retention
+
+See [`.github/workflows/e2e-tests.yml`](.github/workflows/e2e-tests.yml) for the complete implementation.
+
+### Basic Workflow Template
+
 ```yaml
 name: Test Infrastructure
 
@@ -493,6 +602,25 @@ jobs:
       if: always()
       run: ./bin/xq-infra.js down
 ```
+
+### Reliability Features
+
+The todo-app example demonstrates production-ready patterns for CI/CD:
+
+**Database Connection Resilience:**
+- Automatic retry with exponential backoff (30 attempts over ~2.5 minutes)
+- Graceful degradation instead of immediate crashes
+- Proper connection pool cleanup between retries
+
+**Service Health Checks:**
+- Docker Compose healthcheck integration
+- Services wait for dependencies to be healthy before starting
+- Gateway ensures backend services are ready before accepting traffic
+
+**Test Reporting:**
+- JUnit XML for machine-readable results
+- Markdown summaries in GitHub UI
+- Automatic artifact upload for historical analysis
 
 ## 📚 Examples
 
@@ -940,10 +1068,14 @@ docker compose -f xq-compose.yml config
 
 ## 📊 Version
 
-Current version: **0.0.2** - Key improvements:
+Current version: **0.1.0** - Key improvements:
+- Intelligent routing with HTTP method and path-based routing
+- Multi-file service configuration support
 - Simplified command interface
-- Integrated log viewing
-- On-demand debugging
+- Integrated log viewing with flexible options
+- Comprehensive E2E testing workflow with JUnit XML and markdown reporting
+- Database connection resilience with automatic retry logic
+- Docker Compose healthcheck integration
 - Better CI/CD integration
 
 ## 🤝 Contributing

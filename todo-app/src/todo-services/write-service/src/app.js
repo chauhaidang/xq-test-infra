@@ -42,6 +42,18 @@ app.post('/api/todos',
   todoController.createTodo.bind(todoController)
 )
 
+// Bulk update status - MUST come before :id routes
+app.patch('/api/todos/bulk-status',
+  TodoController.getValidationRules().bulkUpdateStatus,
+  handleValidationErrors,
+  todoController.bulkUpdateStatus.bind(todoController)
+)
+
+// Delete completed todos - MUST come before :id routes
+app.delete('/api/todos/completed',
+  todoController.deleteCompletedTodos.bind(todoController)
+)
+
 // Update todo
 app.put('/api/todos/:id',
   TodoController.getValidationRules().updateTodo,
@@ -54,18 +66,6 @@ app.delete('/api/todos/:id',
   TodoController.getValidationRules().deleteTodo,
   handleValidationErrors,
   todoController.deleteTodo.bind(todoController)
-)
-
-// Bulk update status
-app.patch('/api/todos/bulk-status',
-  TodoController.getValidationRules().bulkUpdateStatus,
-  handleValidationErrors,
-  todoController.bulkUpdateStatus.bind(todoController)
-)
-
-// Delete completed todos
-app.delete('/api/todos/completed',
-  todoController.deleteCompletedTodos.bind(todoController)
 )
 
 // 404 handler

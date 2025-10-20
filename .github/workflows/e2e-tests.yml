@@ -1,0 +1,171 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, 8-setup-workflow-to-leverage-infra-cli-with-test-bed-e2e-test ]
+    paths:
+      - 'src/**'
+      - 'todo-app/**'
+      - 'bin/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'todo-app/**'
+      - 'bin/**'
+  workflow_dispatch:
+
+
+env:
+  # Gateway configuration (single entry point)
+  GATEWAY_URL: http://localhost:8080
+
+  # Database configuration (for test setup/teardown)
+  DB_HOST: localhost
+  DB_PORT: 5432
+  DB_NAME: todoapp
+  DB_USER: todouser
+  DB_PASSWORD: todopass
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # =============================================================
+      # Setup: Checkout and Node.js configuration
+      # =============================================================
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install xq-infra CLI dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      # =============================================================
+      # Build Docker Images: Setup Buildx and build services
+      # =============================================================
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build todo-app Docker images
+        working-directory: todo-app
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x build-all-services.sh
+          ./build-all-services.sh --github-token $GITHUB_TOKEN
+
+      - name: Verify Docker images
+        run: |
+          echo "Checking built images..."
+          docker images | grep todo-read-service
+          docker images | grep todo-write-service
+
+      # =============================================================
+      # Deploy Test Environment: Generate compose and start services
+      # =============================================================
+      - name: Generate docker-compose with xq-infra
+        run: |
+          echo "Generating docker-compose from multi-file configuration..."
+          node ./bin/xq-infra.js generate -f todo-app/services
+
+      - name: Display generated compose file
+        run: |
+          echo "Generated xq-compose.yml:"
+          cat xq-compose.yml
+
+      - name: Start services with xq-infra
+        run: |
+          echo "Starting all services..."
+          node ./bin/xq-infra.js up
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to become healthy..."
+          chmod +x todo-app/e2e-tests/setup/wait-for-services.sh
+          todo-app/e2e-tests/setup/wait-for-services.sh
+
+      - name: Verify all containers are running
+        run: |
+          echo "Checking container status..."
+          docker compose -f xq-compose.yml ps
+
+          # Ensure all expected services are running
+          docker compose -f xq-compose.yml ps | grep todo-read-service | grep Up
+          docker compose -f xq-compose.yml ps | grep todo-write-service | grep Up
+          docker compose -f xq-compose.yml ps | grep postgres | grep Up
+          docker compose -f xq-compose.yml ps | grep xq-gateway | grep Up
+
+      # =============================================================
+      # Run E2E Tests: Install test dependencies and execute tests
+      # =============================================================
+      - name: Install E2E test dependencies
+        working-directory: todo-app/e2e-tests
+        run: npm ci
+
+      - name: Run E2E test suite
+        working-directory: todo-app/e2e-tests
+        env:
+          GATEWAY_URL: ${{ env.GATEWAY_URL }}
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+        run: npm run test:ci
+
+      - name: Convert test results to markdown
+        if: success() || failure()
+        working-directory: todo-app/e2e-tests
+        run: |
+          echo "Converting JUnit XML to Markdown..."
+          node utils/test-results-to-markdown.js ./junit.xml >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test results
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            todo-app/e2e-tests/junit.xml
+            todo-app/e2e-tests/test-results.md
+          retention-days: 7
+
+      # =============================================================
+      # Cleanup and Logging: Capture logs on failure and cleanup
+      # =============================================================
+      - name: Capture service logs on failure
+        if: failure()
+        run: |
+          echo "Capturing logs from all services..."
+          node ./bin/xq-infra.js logs > service-logs.txt 2>&1 || true
+          echo "Service logs captured to service-logs.txt"
+
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: service-logs.txt
+          retention-days: 7
+
+      - name: Cleanup services
+        if: always()
+        run: |
+          echo "Stopping all services..."
+          node ./bin/xq-infra.js down
+
+      - name: Verify all containers are stopped
+        if: always()
+        run: |
+          echo "Checking if containers are stopped..."
+          docker compose -f xq-compose.yml ps -a || true
