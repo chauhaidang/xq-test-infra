@@ -145,7 +145,7 @@ describe('Gateway', () => {
 
     test('should convert wildcard path to regex pattern', () => {
       const result = gateway.convertToNginxPath('/api/users/*')
-      expect(result).toBe('~ ^\\/api\\/users(\\/|$)')
+      expect(result).toBe('~ ^\\/api\\/users(\\/.*)?$')
     })
 
     test('should handle root path', () => {
@@ -160,7 +160,7 @@ describe('Gateway', () => {
 
     test('should handle nested wildcard paths', () => {
       const result = gateway.convertToNginxPath('/api/v1/todos/*')
-      expect(result).toBe('~ ^\\/api\\/v1\\/todos(\\/|$)')
+      expect(result).toBe('~ ^\\/api\\/v1\\/todos(\\/.*)?$')
     })
   })
 
