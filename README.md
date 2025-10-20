@@ -1068,10 +1068,14 @@ docker compose -f xq-compose.yml config
 
 ## 📊 Version
 
-Current version: **0.0.2** - Key improvements:
+Current version: **0.1.0** - Key improvements:
+- Intelligent routing with HTTP method and path-based routing
+- Multi-file service configuration support
 - Simplified command interface
-- Integrated log viewing
-- On-demand debugging
+- Integrated log viewing with flexible options
+- Comprehensive E2E testing workflow with JUnit XML and markdown reporting
+- Database connection resilience with automatic retry logic
+- Docker Compose healthcheck integration
 - Better CI/CD integration
 
 ## 🤝 Contributing

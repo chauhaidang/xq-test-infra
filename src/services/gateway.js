@@ -123,9 +123,9 @@ function generatePathBasedLocations(routes) {
 function convertToNginxPath(path) {
   // Handle wildcard paths
   if (path.endsWith('/*')) {
-    // Convert /api/todos/* to regex pattern
+    // Convert /api/todos/* to regex pattern that matches /api/todos and /api/todos/anything
     const basePath = path.slice(0, -2)
-    return `~ ^${basePath.replace(/\//g, '\\/')}(\\/|$)`
+    return `~ ^${basePath.replace(/\//g, '\\/')}(\\/.*)?$`
   }
 
   // Exact match with optional trailing slash

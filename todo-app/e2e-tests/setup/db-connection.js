@@ -4,8 +4,8 @@ let pool = null
 
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5433,
-  database: process.env.DB_NAME || 'todoapp_test',
+  port: process.env.DB_PORT || 5432,
+  database: process.env.DB_NAME || 'todoapp',
   user: process.env.DB_USER || 'todouser',
   password: process.env.DB_PASSWORD || 'todopass',
   max: 5,
