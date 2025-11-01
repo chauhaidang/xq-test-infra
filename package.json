@@ -1,9 +1,18 @@
 {
-  "name": "xq-test-infra",
-  "version": "0.1.0",
+  "name": "@chauhaidang/xq-test-infra",
+  "version": "0.2.0",
   "description": "A test infra cli used to spin up test environment",
   "bin": {
     "xq-infra": "./bin/xq-infra.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "start": "node ./bin/xq-infra.js",

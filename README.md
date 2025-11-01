@@ -72,6 +72,33 @@ EOF
 - Docker Engine 20.10+ with Compose plugin
 - Git (for cloning)
 
+### Install from GitHub Package Registry
+
+#### 1. Authenticate to GitHub Packages
+Create or update your `~/.npmrc` file with GitHub authentication:
+
+```bash
+echo "//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN" >> ~/.npmrc
+echo "@chauhaidang:registry=https://npm.pkg.github.com" >> ~/.npmrc
+```
+
+Replace `YOUR_GITHUB_TOKEN` with a GitHub Personal Access Token that has `read:packages` permission.
+
+#### 2. Install the CLI
+```bash
+# Install globally
+npm install -g @chauhaidang/xq-test-infra
+
+# Or install in your project
+npm install --save-dev @chauhaidang/xq-test-infra
+```
+
+#### 3. Verify Installation
+```bash
+xq-infra --version
+xq-infra --help
+```
+
 ### Install from Source
 ```bash
 git clone https://github.com/chauhaidang/xq-test-infra.git
