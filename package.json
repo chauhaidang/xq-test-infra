@@ -1,6 +1,6 @@
 {
   "name": "@chauhaidang/xq-test-infra",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A test infra cli used to spin up test environment",
   "bin": {
     "xq-infra": "./bin/xq-infra.js"
