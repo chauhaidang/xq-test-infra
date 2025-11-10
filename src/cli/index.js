@@ -47,7 +47,19 @@ module.exports = async function main() {
       const composeFile = path.join(process.cwd(), 'xq-compose.yml')
       try {
         const shouldPull = opts.pull !== false // true by default, false only if --no-pull
-        if (shouldPull) await composeInvoker.pull(composeFile)
+
+        // Attempt to pull images, but don't fail if some images are local
+        if (shouldPull) {
+          try {
+            await composeInvoker.pull(composeFile)
+          } catch (pullErr) {
+            // Pull failed (possibly due to local images not in registry)
+            // Log warning but continue - docker compose up will use local images if available
+            console.warn('Warning: Failed to pull some images from registry. Proceeding with local/cached images.')
+            console.warn(`Reason: ${pullErr.message}`)
+          }
+        }
+
         await composeInvoker.up(composeFile, { pull: shouldPull })
         console.log('Services started successfully!')
       } catch (err) {

@@ -42,7 +42,7 @@ class ComposeInvoker {
 
     const args = [...cli.args, '-f', composeFile, 'up']
     if (detached) args.push('-d')
-    if (pull) args.push('--pull', 'always')
+    if (pull) args.push('--pull', 'missing')
     args.push('--remove-orphans') // Always remove orphaned containers
 
     return this.execCommand(cli.command, args, {

@@ -533,6 +533,45 @@ Duration:    8.35s
 - ✅ Reduced chance of bugs from stale images
 - ✅ More intuitive for CI/CD environments
 
+**Local Image Support (2025-11-10 - Bug Fix)**
+
+**Problem**: CLI failed when users defined local/custom images (e.g., `xq-fitness-write-service:latest`) because:
+1. `docker compose pull` tried to fetch from registry → failed for local images
+2. `docker compose up --pull always` also failed because images didn't exist in any registry
+3. No fallback to use locally built images
+
+**Solution Implemented**:
+1. Made image pulling non-fatal - wrapped pull call in try-catch with warning instead of crash
+2. Changed `--pull always` to `--pull missing` in docker compose up command
+   - Only pulls images that don't exist locally
+   - Gracefully falls back to local images if pull fails
+   - Allows mixed environments (some images from registry, some locally built)
+
+**Files Modified**:
+- `src/cli/index.js` - Wrapped pull call in try-catch, added warning message for pull failures
+- `src/services/composeInvoker.js` - Changed `--pull always` to `--pull missing` (line 45)
+- `README.md` - Added detailed explanation of pull behavior and support for local images
+
+**How It Works Now**:
+```bash
+# Default: tries to pull, falls back to local if pull fails
+./bin/xq-infra.js up
+# ✅ Works with registry images (pulls latest)
+# ✅ Works with local images (uses if available)
+# ✅ Works with mixed environments
+
+# Skip pulling entirely (for faster development)
+./bin/xq-infra.js up --no-pull
+# ✅ Uses only cached/local images
+```
+
+**Benefits**:
+- ✅ Supports local/custom built images (e.g., `my-service:latest`)
+- ✅ Graceful fallback when images not in registry
+- ✅ Works with mixed registry + local image setups
+- ✅ Clearer warning messages instead of cryptic failures
+- ✅ Better UX for developers building custom container images
+
 **Current State Summary**:
 - E2E workflow fully functional and tested
 - Database connection resilience implemented

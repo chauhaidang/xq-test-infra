@@ -151,14 +151,24 @@ xq-infra generate -f services.yaml --overrides overrides.json
 ```
 
 ### Up Command
-Start services from `xq-compose.yml` in detached mode. By default, pulls latest images before starting.
+Start services from `xq-compose.yml` in detached mode. By default, attempts to pull images from registries but gracefully falls back to local images.
 
 ```bash
 xq-infra up [options]
 
 Options:
-  --no-pull                 Skip pulling images (uses cached images)
+  --no-pull                 Skip pulling images (uses cached/local images only)
 ```
+
+**Pull Behavior:**
+- **Default (no flag)**: Attempts to pull images from registries. If an image fails to pull (e.g., custom/local image), the CLI logs a warning and continues using the local image if available.
+- **With `--no-pull`**: Skips pulling entirely and uses only cached/local images.
+- **Image priority**: Always tries to pull missing images first, then falls back to local images.
+
+This approach works for:
+- ✅ Registry images (Docker Hub, GitHub Container Registry, custom registries)
+- ✅ Locally built images (e.g., `my-custom-service:latest`)
+- ✅ Mixed environments (some images from registry, some locally built)
 
 ### Down Command
 Stop and remove services from `xq-compose.yml`.
