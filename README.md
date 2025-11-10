@@ -151,13 +151,13 @@ xq-infra generate -f services.yaml --overrides overrides.json
 ```
 
 ### Up Command
-Start services from `xq-compose.yml` in detached mode.
+Start services from `xq-compose.yml` in detached mode. By default, pulls latest images before starting.
 
 ```bash
 xq-infra up [options]
 
 Options:
-  --pull                    Pull images before starting
+  --no-pull                 Skip pulling images (uses cached images)
 ```
 
 ### Down Command

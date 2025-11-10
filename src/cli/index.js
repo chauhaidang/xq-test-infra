@@ -42,12 +42,13 @@ module.exports = async function main() {
   program
     .command('up')
     .description('Start services from xq-compose.yml (detached mode)')
-    .option('--pull', 'Pull images before starting')
+    .option('--no-pull', 'Skip pulling images (uses cached images)')
     .action(async (opts) => {
       const composeFile = path.join(process.cwd(), 'xq-compose.yml')
       try {
-        if (opts.pull) await composeInvoker.pull(composeFile)
-        await composeInvoker.up(composeFile, { pull: !!opts.pull })
+        const shouldPull = opts.pull !== false // true by default, false only if --no-pull
+        if (shouldPull) await composeInvoker.pull(composeFile)
+        await composeInvoker.up(composeFile, { pull: shouldPull })
         console.log('Services started successfully!')
       } catch (err) {
         console.error('Failed to run up:', err.message || err)

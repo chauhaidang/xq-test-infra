@@ -502,6 +502,37 @@ Duration:    8.35s
 - ✅ Express route matching is more predictable and correct
 - ✅ All E2E tests pass reliably
 
+**Docker Image Pull Logic Update (2025-11-10)**
+
+**Change**: Made `--pull` behavior the default for `xq-infra up` command
+
+**Problem**: The original implementation required users to explicitly pass `--pull` flag to fetch new Docker images. This could lead to using stale cached images unexpectedly.
+
+**Solution**:
+- Changed option from `--pull` (opt-in) to `--no-pull` (opt-out)
+- Now pulls images by default unless `--no-pull` is explicitly specified
+- Updated CLI logic in `src/cli/index.js` line 49 to use negation check: `opts.pull !== false`
+- Updated README.md with new usage documentation
+
+**Files Modified**:
+- `src/cli/index.js` - Changed option definition and pull logic (line 45, 49)
+- `README.md` - Updated "Up Command" section to reflect new default behavior
+
+**Usage**:
+```bash
+# Default: pulls latest images
+./bin/xq-infra.js up
+
+# Skip pulling if needed (use cached images)
+./bin/xq-infra.js up --no-pull
+```
+
+**Benefits**:
+- ✅ Always gets latest images by default (safer, more predictable)
+- ✅ Users can still opt-out for faster development workflows
+- ✅ Reduced chance of bugs from stale images
+- ✅ More intuitive for CI/CD environments
+
 **Current State Summary**:
 - E2E workflow fully functional and tested
 - Database connection resilience implemented
@@ -510,6 +541,7 @@ Duration:    8.35s
 - Documentation comprehensive and up-to-date
 - Todo-app example fully demonstrates xq-infra capabilities
 - **All 22 E2E tests passing (0 failures)**
+- Docker image pull logic improved for safer defaults
 
 **Next Steps**:
 - Phase 3 ready for CI workflow review (badges already present, may just need verification)

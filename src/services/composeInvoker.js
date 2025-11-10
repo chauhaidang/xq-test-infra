@@ -35,7 +35,7 @@ class ComposeInvoker {
   }
 
   async up(composeFile, options = {}) {
-    const { detached = true, pull = false } = options
+    const { detached = true, pull = true } = options
 
     await this.validateComposeFile(composeFile)
     const cli = await this.detectDockerCompose()
