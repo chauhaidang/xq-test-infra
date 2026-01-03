@@ -145,3 +145,4 @@ docker-compose.yml
 docker-compose.yaml
 xq-compose.yml
 junit.xml
+.DS_Store
