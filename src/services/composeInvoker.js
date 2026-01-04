@@ -188,16 +188,29 @@ class ComposeInvoker {
       
       // Fallback: try to detect from compose file by service names
       // This is for backward compatibility when sourcePath is not available
+      // This fallback should rarely be used - prefer .test. files in source directory
       const content = await fs.readFile(composeFile, 'utf8')
       const compose = YAML.parse(content)
       const services = compose.services || {}
       
-      const testContainerPatterns = ['keeper', 'test', 'e2e']
+      // Match services that are clearly test containers
+      // Match: "xq-keeper", "gate-keeper", "e2e-tests", "test-service"
+      // Don't match: "nginx-test", "redis-test" (test is a suffix, not a prefix)
       const testContainers = []
       
       for (const [serviceName, serviceConfig] of Object.entries(services)) {
         const nameLower = serviceName.toLowerCase()
-        if (testContainerPatterns.some(pattern => nameLower.includes(pattern))) {
+        // Match keeper services (e.g., "xq-keeper", "gate-keeper")
+        if (nameLower.includes('keeper')) {
+          testContainers.push(serviceName)
+        }
+        // Match e2e services (e.g., "e2e-tests", "e2e-runner")
+        else if (nameLower.includes('e2e')) {
+          testContainers.push(serviceName)
+        }
+        // Match test services that start with "test-" (e.g., "test-service")
+        // but not services that end with "-test" (e.g., "nginx-test", "redis-test")
+        else if (nameLower.startsWith('test-') || nameLower === 'test') {
           testContainers.push(serviceName)
         }
       }
@@ -252,10 +265,20 @@ class ComposeInvoker {
 
           // Parse service name and status from the line
           // Format: <project>_<service>_<number>  <status>
+          // Status column can contain multiple words like "Exited (0) 2 hours ago"
           for (const serviceName of testContainers) {
             if (line.includes(serviceName)) {
               const parts = line.split(/\s+/)
-              const status = parts[parts.length - 1] || ''
+              // Find the service name position, status is everything after it
+              const serviceIndex = parts.findIndex(part => part.includes(serviceName))
+              let status = ''
+              if (serviceIndex >= 0 && serviceIndex < parts.length - 1) {
+                // Status is everything after the service name
+                status = parts.slice(serviceIndex + 1).join(' ')
+              } else {
+                // Fallback: use last part
+                status = parts[parts.length - 1] || ''
+              }
               const isExited = status.includes('Exited') || status.includes('exited')
               
               if (isExited) {

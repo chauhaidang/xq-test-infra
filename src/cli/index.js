@@ -86,23 +86,30 @@ module.exports = async function main() {
           }
         }
         
-        const testContainers = await composeInvoker.detectTestContainers(composeFile, sourcePath)
-        if (testContainers.length > 0) {
-          console.log('')
-          console.log('🧪 Detected test containers:', testContainers.join(', '))
-          console.log('⏳ Waiting for test containers to complete...')
-          console.log('   (This may take a few moments while tests run)')
-          console.log('')
-          
-          const allPassed = await composeInvoker.waitForTestContainers(composeFile, testContainers)
-          if (!allPassed) {
-            console.error('')
-            console.error('❌ Some test containers failed. Check logs for details.')
-            process.exit(1)
+        // Detect and wait for test containers (if any)
+        try {
+          const testContainers = await composeInvoker.detectTestContainers(composeFile, sourcePath)
+          if (testContainers.length > 0) {
+            console.log('')
+            console.log('🧪 Detected test containers:', testContainers.join(', '))
+            console.log('⏳ Waiting for test containers to complete...')
+            console.log('   (This may take a few moments while tests run)')
+            console.log('')
+            
+            const allPassed = await composeInvoker.waitForTestContainers(composeFile, testContainers)
+            if (!allPassed) {
+              console.error('')
+              console.error('❌ Some test containers failed. Check logs for details.')
+              process.exit(1)
+            }
+            
+            console.log('')
+            console.log('✅ All test containers completed successfully!')
           }
-          
-          console.log('')
-          console.log('✅ All test containers completed successfully!')
+        } catch (detectError) {
+          // If test container detection fails, log warning but don't fail the command
+          // This allows the up command to succeed even if detection has issues
+          console.warn('Warning: Failed to detect test containers:', detectError.message)
         }
       } catch (err) {
         console.error('Failed to run up:', err.message || err)
