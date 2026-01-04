@@ -26,6 +26,8 @@ env:
   DB_NAME: todoapp
   DB_USER: todouser
   DB_PASSWORD: todopass
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   e2e-tests:
@@ -47,8 +49,6 @@ jobs:
 
       - name: Install xq-infra CLI dependencies
         run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
       # =============================================================
       # Build Docker Images: Setup Buildx and build services
@@ -58,8 +58,6 @@ jobs:
 
       - name: Build todo-app Docker images
         working-directory: todo-app
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x build-all-services.sh
           ./build-all-services.sh --github-token $GITHUB_TOKEN
