@@ -292,14 +292,14 @@ class ComposeInvoker {
           const failedContainers = testContainerStatuses.filter(c => c.exitCode !== 0)
 
           if (failedContainers.length > 0) {
-            console.log(`❌ Some test containers failed:`)
+            console.log('❌ Some test containers failed:')
             failedContainers.forEach(container => {
               console.log(`   - ${container.service}: exit code ${container.exitCode}`)
             })
             return false
           }
 
-          console.log(`✅ All test containers completed successfully`)
+          console.log('✅ All test containers completed successfully')
           return true
         }
 
