@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const { program } = require('commander')
 const path = require('path')
+const fs = require('fs-extra')
 const pkg = require('../../package.json')
 const composeGenerator = require('../services/composeGenerator')
 const composeInvoker = require('../services/composeInvoker')
@@ -62,6 +63,47 @@ module.exports = async function main() {
 
         await composeInvoker.up(composeFile, { pull: shouldPull })
         console.log('Services started successfully!')
+        
+        // Detect and wait for test containers to complete
+        // Try to find source directory (test-env, services, or same dir as compose file)
+        const composeDir = path.dirname(composeFile)
+        const possibleSourceDirs = [
+          path.join(composeDir, 'test-env'),
+          path.join(composeDir, 'services'),
+          composeDir
+        ]
+        
+        let sourcePath = null
+        for (const dir of possibleSourceDirs) {
+          try {
+            const stat = await fs.stat(dir)
+            if (stat.isDirectory()) {
+              sourcePath = dir
+              break
+            }
+          } catch {
+            // Directory doesn't exist, try next
+          }
+        }
+        
+        const testContainers = await composeInvoker.detectTestContainers(composeFile, sourcePath)
+        if (testContainers.length > 0) {
+          console.log('')
+          console.log('🧪 Detected test containers:', testContainers.join(', '))
+          console.log('⏳ Waiting for test containers to complete...')
+          console.log('   (This may take a few moments while tests run)')
+          console.log('')
+          
+          const allPassed = await composeInvoker.waitForTestContainers(composeFile, testContainers)
+          if (!allPassed) {
+            console.error('')
+            console.error('❌ Some test containers failed. Check logs for details.')
+            process.exit(1)
+          }
+          
+          console.log('')
+          console.log('✅ All test containers completed successfully!')
+        }
       } catch (err) {
         console.error('Failed to run up:', err.message || err)
         process.exit(3)
