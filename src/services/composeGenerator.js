@@ -174,6 +174,10 @@ class ComposeGenerator {
       composeService.command = service.command
     }
 
+    if (service.healthcheck) {
+      composeService.healthcheck = service.healthcheck
+    }
+
     // Handle dependencies - check both service-level and centralized
     let dependencies = []
 
@@ -235,13 +239,21 @@ class ComposeGenerator {
       gatewayPort++
     }
 
+    // Gateway waits for backends: service_healthy when the service has a healthcheck (avoids nginx 502 while app boots), else service_started
+    const gatewayDependsOn = {}
+    for (const name of Object.keys(compose.services)) {
+      gatewayDependsOn[name] = {
+        condition: compose.services[name].healthcheck ? 'service_healthy' : 'service_started'
+      }
+    }
+
     // Add gateway service
     compose.services['xq-gateway'] = {
       image: 'nginx:alpine',
       ports: [`${gatewayPort}:80`],
       volumes: [`${nginxConfigPath}:/etc/nginx/nginx.conf:ro`],
       networks: ['xq-network'],
-      depends_on: Object.keys(compose.services)
+      depends_on: gatewayDependsOn
     }
   }
 

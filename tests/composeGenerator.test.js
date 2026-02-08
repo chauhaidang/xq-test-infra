@@ -83,8 +83,10 @@ describe('ComposeGenerator', () => {
       // Gateway port should be 8081 (8080 is used by web-app)
       expect(gateway.ports).toEqual(['8081:80'])
       expect(gateway.networks).toEqual(['xq-network'])
-      expect(gateway.depends_on).toContain('web-app')
-      expect(gateway.depends_on).toContain('api-service')
+      expect(gateway.depends_on).toHaveProperty('web-app')
+      expect(gateway.depends_on).toHaveProperty('api-service')
+      expect(gateway.depends_on['web-app']).toEqual({ condition: 'service_started' })
+      expect(gateway.depends_on['api-service']).toEqual({ condition: 'service_started' })
     })
 
     test('should skip gateway when disabled', async () => {
